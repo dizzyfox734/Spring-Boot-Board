@@ -64,9 +64,6 @@ public class PostController {
         return "redirect:/post/list";
     }
 
-    /**
-     * 포스트 수정
-     */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/modify/{id}")
     public String modify(PostDto postDto, @PathVariable("id") Integer id, Principal principal) {
@@ -79,6 +76,9 @@ public class PostController {
         return "post/form";
     }
 
+    /**
+     * 포스트 수정
+     */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/modify/{id}")
     public String modify(@Valid PostDto postDto, BindingResult bindingResult,
@@ -92,5 +92,20 @@ public class PostController {
         }
         this.postService.modify(post, postDto.getTitle(), postDto.getContent());
         return String.format("redirect:/post/detail/%s", id);
+    }
+
+    /**
+     * 포스트 삭제
+     */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/delete/{id}")
+    public String delete(Principal principal, @PathVariable("id") Integer id) {
+        Post post = this.postService.findOne(id);
+        if (!post.getAuthor().getUsername().equals(principal.getName())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "삭제권한이 없습니다.");
+        }
+        this.postService.delete(post);
+
+        return "redirect:/";
     }
 }

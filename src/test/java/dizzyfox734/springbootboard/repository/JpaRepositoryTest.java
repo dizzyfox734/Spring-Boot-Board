@@ -33,15 +33,15 @@ public class JpaRepositoryTest {
         String content2 = "content2";
         LocalDateTime now = LocalDateTime.of(2023, 5, 21, 0, 0, 0);
 
-        Post q1 = new Post();
-        q1.setTitle(title1);
-        q1.setContent(content1);
-        this.postRepository.save(q1);  // 첫번째 질문 저장
+        Post post1 = new Post();
+        post1.setTitle(title1);
+        post1.setContent(content1);
+        this.postRepository.save(post1);
 
-        Post q2 = new Post();
-        q2.setTitle(title2);
-        q2.setContent(content2);
-        this.postRepository.save(q2);  // 두번째 질문 저장
+        Post post2 = new Post();
+        post2.setTitle(title2);
+        post2.setContent(content2);
+        this.postRepository.save(post2);
 
         // when
         List<Post> all = this.postRepository.findAll();

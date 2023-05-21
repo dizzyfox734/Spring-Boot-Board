@@ -6,12 +6,16 @@ import dizzyfox734.springbootboard.domain.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 import java.util.List;
 
 @Getter
 @Setter
 @Entity
+@SQLDelete(sql = "UPDATE post SET deleted_date = NOW() WHERE id = ?")
+@Where(clause = "deleted_date is null")
 public class Post extends BaseTimeEntity {
 
     @Id

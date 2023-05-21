@@ -28,7 +28,7 @@ public class CommentController {
     private final UserService userService;
 
     /**
-     * 답변 저장
+     * 댓글 저장
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/create/{id}")
