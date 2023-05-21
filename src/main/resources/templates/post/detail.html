@@ -41,6 +41,12 @@
                     <div th:text="${#temporals.format(comment.createdDate, 'yyyy-MM-dd HH:mm')}"></div>
                 </div>
             </div>
+            <div class="my-3">
+                <a th:href="@{|/comment/modify/${comment.id}|}" class="btn btn-sm btn-outline-secondary"
+                   sec:authorize="isAuthenticated()"
+                   th:if="${comment.author != null and #authentication.getPrincipal().getUsername() == comment.author.username}"
+                   th:text="수정"></a>
+            </div>
         </div>
     </div>
     <!-- 댓글 반복 끝  -->
