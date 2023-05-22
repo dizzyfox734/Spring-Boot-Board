@@ -6,10 +6,14 @@ import dizzyfox734.springbootboard.domain.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 @Getter
 @Setter
 @Entity
+@SQLDelete(sql = "UPDATE comment SET deleted_date = NOW() WHERE id = ?")
+@Where(clause = "deleted_date is null")
 public class Comment extends BaseTimeEntity {
 
     @Id
