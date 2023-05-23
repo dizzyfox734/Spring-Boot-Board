@@ -17,12 +17,14 @@ public class CommentService {
     private final CommentRepository commentRepository;
 
 
-    public void create(Post post, String content, User author) {
+    public Comment create(Post post, String content, User author) {
         Comment comment = new Comment();
         comment.setContent(content);
         comment.setPost(post);
         comment.setAuthor(author);
         this.commentRepository.save(comment);
+
+        return comment;
     }
 
     public Comment findOne(Integer id) {

@@ -45,8 +45,9 @@ public class CommentController {
             model.addAttribute("post", post);
             return "post/detail";
         }
-        this.commentService.create(post, commentDto.getContent(), user);
-        return String.format("redirect:/post/detail/%s", id);
+        Comment comment = this.commentService.create(post, commentDto.getContent(), user);
+        
+        return String.format("redirect:/post/detail/%s#comment_%s", id, comment.getId());
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -77,7 +78,7 @@ public class CommentController {
         }
         this.commentService.modify(comment, commentDto.getContent());
 
-        return String.format("redirect:/post/detail/%s", comment.getPost().getId());
+        return String.format("redirect:/post/detail/%s#comment_%s", comment.getPost().getId(), comment.getId());
     }
 
     /**
