@@ -46,7 +46,7 @@ public class CommentController {
             return "post/detail";
         }
         Comment comment = this.commentService.create(post, commentDto.getContent(), user);
-        
+
         return String.format("redirect:/post/detail/%s#comment_%s", id, comment.getId());
     }
 
