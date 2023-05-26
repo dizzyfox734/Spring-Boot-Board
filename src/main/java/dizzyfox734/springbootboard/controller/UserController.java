@@ -1,14 +1,19 @@
 package dizzyfox734.springbootboard.controller;
 
 import dizzyfox734.springbootboard.controller.dto.SignupDto;
+import dizzyfox734.springbootboard.domain.user.User;
 import dizzyfox734.springbootboard.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+
+import java.security.Principal;
 
 @RequiredArgsConstructor
 @Controller
@@ -47,5 +52,13 @@ public class UserController {
     @GetMapping("/login")
     public String login() {
         return "user/login";
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/info")
+    public String info(Model model, Principal principal) {
+        model.addAttribute("username", principal.getName());
+
+        return "user/info";
     }
 }
