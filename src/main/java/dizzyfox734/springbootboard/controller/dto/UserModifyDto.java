@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Setter
 @Getter
-public class UserUpdateDto {
+public class UserModifyDto {
 
     @NotEmpty(message = "비밀번호는 필수항목입니다.")
     private String password1;

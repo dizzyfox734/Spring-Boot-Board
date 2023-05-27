@@ -1,6 +1,7 @@
 package dizzyfox734.springbootboard.service;
 
 import dizzyfox734.springbootboard.controller.dto.SignupDto;
+import dizzyfox734.springbootboard.controller.dto.UserModifyDto;
 import dizzyfox734.springbootboard.domain.user.Authority;
 import dizzyfox734.springbootboard.domain.user.User;
 import dizzyfox734.springbootboard.domain.user.UserRepository;
@@ -34,6 +35,15 @@ public class UserService {
                 .authorities(Collections.singleton(authority))
                 .activated(true)
                 .build();
+
+        this.userRepository.save(user);
+
+        return user;
+    }
+
+    @Transactional
+    public User modify(User user, String password) {
+        user.setPassword(passwordEncoder.encode(password));
 
         this.userRepository.save(user);
 
