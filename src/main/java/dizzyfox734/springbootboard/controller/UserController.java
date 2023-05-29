@@ -84,6 +84,6 @@ public class UserController {
         User user = userService.getUser(principal.getName());
         userService.modify(user, userModifyDto.getPassword1());
 
-        return "user/info";
+        return "redirect:/user/logout";
     }
 }
