@@ -1,0 +1,58 @@
+version: '3'
+
+services:
+
+  database:
+    container_name: ${PROJECT_NAME}_db
+    build:  
+      context: ./mysql
+      args:
+        - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_HOST: ${MYSQL_ROOT_HOST}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - ../database:/var/lib/mysql
+    ports:
+      - ${MYSQL_HOST_PORT}:3306
+        #  restart: no
+
+  web:
+    container_name: ${PROJECT_NAME}_web
+    build:
+      context: ./web
+    environment:
+      SPRING_DATASOURCE_URL: ${WEB_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${WEB_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${WEB_DATASOURCE_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ../web/${PROJECT_NAME}/build/libs/${PROJECT_NAME}-${WEB_VERSION}.jar:/app.jar
+    expose:
+      - 8080
+    ports:
+      - ${WEB_HOST_PORT}:8080
+    depends_on:
+      - database
+        #  restart: no
+
+  # nginx:
+  #   container_name: ${PROJECT_NAME}_nginx
+  #   build:
+  #     context: ./nginx
+  #     args:
+  #       - NGINX_ROOT_DIR=${NGINX_ROOT_DIR}
+  #       - PROJECT_NAME=${PROJECT_NAME}
+  #   volumes:
+  #     - ./nginx/nginx.conf:${NGINX_ROOT_DIR}/conf.d/nginx.conf
+  #   ports:
+  #     - ${NGINX_HOST_PORT}:80
+  #   depends_on:
+  #     - web
+  #   restart: always
+
