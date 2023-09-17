@@ -24,6 +24,12 @@ public class User extends BaseTimeEntity {
     @Column(length = 100)
     private String password;
 
+    @Column(length = 10)
+    private String name;
+
+    @Column(length = 50)
+    private String email;
+
     private boolean activated;
 
     @ManyToMany

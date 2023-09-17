@@ -3,6 +3,7 @@ package dizzyfox734.springbootboard.controller;
 import dizzyfox734.springbootboard.controller.dto.SignupDto;
 import dizzyfox734.springbootboard.controller.dto.UserModifyDto;
 import dizzyfox734.springbootboard.domain.user.User;
+import dizzyfox734.springbootboard.service.MailService;
 import dizzyfox734.springbootboard.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
@@ -24,6 +26,7 @@ import java.security.Principal;
 public class UserController {
 
     private final UserService userService;
+    private final MailService mailService;
 
     @GetMapping("/signup")
     public String signup(SignupDto signupDto) {
@@ -47,9 +50,22 @@ public class UserController {
             return "user/signup";
         };
 
+        if (userService.validateDuplicateEmail(signupDto.getEmail())) {
+            bindingResult.reject("signupFailed", "이미 등록된 이메일입니다.");
+            return "user/signup";
+        }
+
         userService.create(signupDto);
 
         return "redirect:/";
+    }
+
+    @PostMapping("/signup/confirm")
+    public String emailConfirm(@RequestParam String email) throws Exception {
+
+        String confirm = mailService.sendMail(email);
+
+        return confirm;
     }
 
     @GetMapping("/login")

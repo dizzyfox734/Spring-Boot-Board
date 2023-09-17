@@ -32,6 +32,8 @@ public class UserService {
         User user = User.builder()
                 .username(signupDto.getUsername())
                 .password(passwordEncoder.encode(signupDto.getPassword1()))
+                .name(signupDto.getName())
+                .email(signupDto.getEmail())
                 .authorities(Collections.singleton(authority))
                 .activated(true)
                 .build();
@@ -52,6 +54,10 @@ public class UserService {
 
     public boolean validateDuplicateUser(String username) {
         return userRepository.findOneWithAuthoritiesByUsername(username).isPresent();
+    }
+
+    public boolean validateDuplicateEmail(String email) {
+        return userRepository.findOneWithAuthoritiesByEmail(email).isPresent();
     }
 
     public User getUser(String username) {
