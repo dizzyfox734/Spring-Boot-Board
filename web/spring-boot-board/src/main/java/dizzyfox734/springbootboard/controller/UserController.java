@@ -7,18 +7,18 @@ import dizzyfox734.springbootboard.service.MailService;
 import dizzyfox734.springbootboard.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.Map;
+
+import static dizzyfox734.springbootboard.common.utils.constants.ResponseConstants.CREATED;
+import static dizzyfox734.springbootboard.common.utils.constants.ResponseConstants.OK;
 
 @RequiredArgsConstructor
 @Controller
@@ -60,12 +60,18 @@ public class UserController {
         return "redirect:/";
     }
 
+    @PostMapping("/signup/sendMail")
+    public ResponseEntity<Void> sendMail(@RequestBody Map<String, String> map) throws Exception {
+        mailService.sendMail(map.get("email"));
+
+        return CREATED;
+    }
+
     @PostMapping("/signup/confirm")
-    public String emailConfirm(@RequestParam String email) throws Exception {
+    public ResponseEntity<Void> mailVerification(@RequestBody Map<String, String> map) throws Exception {
+        mailService.verifyMail(map.get("code"));
 
-        String confirm = mailService.sendMail(email);
-
-        return confirm;
+        return OK;
     }
 
     @GetMapping("/login")

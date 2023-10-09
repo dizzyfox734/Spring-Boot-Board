@@ -1,4 +1,4 @@
-package dizzyfox734.springbootboard.config;
+package dizzyfox734.springbootboard.common.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;

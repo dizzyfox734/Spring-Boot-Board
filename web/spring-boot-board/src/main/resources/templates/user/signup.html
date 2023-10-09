@@ -27,9 +27,16 @@
         <div class="mb-3">
             <label for="email" class="form-label">Email</label>
             <input type="text" th:field="*{email}" class="form-control">
+            <button class="btn btn-outline-primary" type="button" onclick="sendMail()">인증번호</button>
+        </div>
+        <div class="mb-3">
+            <label for="emailConfirm" class="form-label">인증번호를 입력해주세요</label>
+            <input type="text" th:field="*{emailConfirm}" class="form-control" disabled>
         </div>
         <button type="submit" class="btn btn-primary">회원가입</button>
     </form>
+
+    <script type="text/javascript" th:src="@{/js/user/signup.js}"></script>
 </div>
 
 </html>

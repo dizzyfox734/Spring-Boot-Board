@@ -1,4 +1,4 @@
-package dizzyfox734.springbootboard.config;
+package dizzyfox734.springbootboard.common.config;
 
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
@@ -28,7 +28,8 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                .csrf(csrf -> csrf.ignoringRequestMatchers(toH2Console()))
+                .csrf(csrf -> csrf.ignoringRequestMatchers(toH2Console())
+                        .ignoringRequestMatchers("/user/signup/confirm"))
 
                 .headers(headers -> headers.addHeaderWriter(new XFrameOptionsHeaderWriter(
                         XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN)))

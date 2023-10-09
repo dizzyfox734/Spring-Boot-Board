@@ -35,3 +35,19 @@ spring:
           timeout: 5000
           starttls:
             enable: true
+
+  thymeleaf:
+    prefix:
+      classpath: templates/
+    suffix: .html
+    cache: false
+
+  devtools:
+    livereload:
+      enabled: true
+    restart:
+      enabled: true
+
+  redis:
+    host: localhost
+    port: 6379
