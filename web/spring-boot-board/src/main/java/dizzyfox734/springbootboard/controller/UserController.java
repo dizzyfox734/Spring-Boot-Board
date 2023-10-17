@@ -69,7 +69,7 @@ public class UserController {
 
     @PostMapping("/signup/confirm")
     public ResponseEntity<Void> mailVerification(@RequestBody Map<String, String> map) throws Exception {
-        mailService.verifyMail(map.get("code"));
+        mailService.verifyMail(map);
 
         return OK;
     }
