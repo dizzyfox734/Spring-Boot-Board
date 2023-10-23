@@ -34,3 +34,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+web/spring-boot-board/src/main/resources/application.yml
+web/spring-boot-board/src/main/resources/data.sql
