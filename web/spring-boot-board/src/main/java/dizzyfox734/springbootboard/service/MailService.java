@@ -1,7 +1,6 @@
 package dizzyfox734.springbootboard.service;
 
 import dizzyfox734.springbootboard.controller.dao.MailCertificationDao;
-import dizzyfox734.springbootboard.exception.MailAuthenticationFailedException;
 import jakarta.mail.Message;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -10,7 +9,6 @@ import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 import java.util.Random;
 
 @Service
@@ -18,9 +16,7 @@ public class MailService {
 
     @Autowired
     private JavaMailSender javaMailSender;
-
     private final MailCertificationDao mailCertificationDao;
-    public static final String checkcode = createKey();
 
     @Autowired
     public MailService(MailCertificationDao mailCertificationDao) {
@@ -50,7 +46,7 @@ public class MailService {
         return key.toString();
     }
 
-    private MimeMessage createMessage(String to) throws Exception {
+    private MimeMessage createMessage(String to, String checkcode) throws Exception {
         MimeMessage message = javaMailSender.createMimeMessage();
 
         message.addRecipients(Message.RecipientType.TO, to);
@@ -74,7 +70,8 @@ public class MailService {
     }
 
     public void sendMail(String to) throws Exception {
-        MimeMessage message = createMessage(to);
+        String checkcode = createKey();
+        MimeMessage message = createMessage(to, checkcode);
 
         try {
             javaMailSender.send(message);
@@ -86,16 +83,17 @@ public class MailService {
         mailCertificationDao.createMailCertification(to, checkcode);
     }
 
-    public void verifyMail(Map<String, String> map) {
-        if (isVerify(map)) {
-            throw new MailAuthenticationFailedException("인증코드가 일치하지 않습니다.");
+    public boolean verifyMail(String email, String checkcode) {
+        if (isVerify(email, checkcode)) {
+            return false;
         }
-        mailCertificationDao.removeMailCertification(map.get("mail"));
+        mailCertificationDao.removeMailCertification(email);
+        return true;
     }
 
-    private boolean isVerify(Map<String, String> map) {
-        return !(mailCertificationDao.hasKey(map.get("mail"))
-                && mailCertificationDao.getMailCertification(map.get("mail"))
-                .equals(map.get("checkcode")));
+    private boolean isVerify(String email, String checkcode) {
+        return !(mailCertificationDao.hasKey(email)
+                && mailCertificationDao.getMailCertification(email)
+                .equals(checkcode));
     }
 }

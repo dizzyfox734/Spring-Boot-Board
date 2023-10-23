@@ -11,7 +11,7 @@ import java.time.Duration;
 public class MailCertificationDao {
 
     private final String PREFIX = "mail: ";
-    private final int LIMIT_TIME = 60 * 3;
+    private final int LIMIT_TIME = 60 * 10;
 
     private final StringRedisTemplate stringRedisTemplate;
 

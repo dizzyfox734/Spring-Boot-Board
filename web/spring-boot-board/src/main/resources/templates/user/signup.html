@@ -26,12 +26,15 @@
         </div>
         <div class="mb-3">
             <label for="email" class="form-label">Email</label>
-            <input type="text" th:field="*{email}" class="form-control">
-            <button class="btn btn-outline-primary" type="button" onclick="sendMail()">인증번호</button>
+            <div class="d-flex">
+                <input type="text" th:field="*{email}" class="form-control w-75 me-3">
+                <button class="btn btn-outline-primary px-4" type="button" onclick="sendMail()">인증번호</button>
+            </div>
         </div>
         <div class="mb-3">
             <label for="emailConfirm" class="form-label">인증번호를 입력해주세요</label>
-            <input type="text" th:field="*{emailConfirm}" class="form-control" disabled>
+            <span id="emailConfirmText" class="d-none text-danger">인증번호가 발송되었습니다. 인증코드는 10분간 유효합니다.</span>
+            <input type="text" th:field="*{emailConfirm}" class="form-control">
         </div>
         <button type="submit" class="btn btn-primary">회원가입</button>
     </form>

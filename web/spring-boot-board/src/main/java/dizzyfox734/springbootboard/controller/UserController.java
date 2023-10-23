@@ -17,8 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.Map;
 
-import static dizzyfox734.springbootboard.common.utils.constants.ResponseConstants.CREATED;
-import static dizzyfox734.springbootboard.common.utils.constants.ResponseConstants.OK;
+import static dizzyfox734.springbootboard.common.utils.constants.ResponseConstants.*;
 
 @RequiredArgsConstructor
 @Controller
@@ -55,6 +54,13 @@ public class UserController {
             return "user/signup";
         }
 
+        if (!mailService.verifyMail(signupDto.getEmail(), signupDto.getEmailConfirm())) {
+            bindingResult.rejectValue("emailConfirm", "emailConfirmInCorrect",
+                    "인증코드가 일치하지 않습니다.");
+            return "user/signup";
+
+        }
+
         userService.create(signupDto);
 
         return "redirect:/";
@@ -62,16 +68,13 @@ public class UserController {
 
     @PostMapping("/signup/sendMail")
     public ResponseEntity<Void> sendMail(@RequestBody Map<String, String> map) throws Exception {
+        String email = map.get("email");
+        if (email.isEmpty()) {
+            return BAD_REQUEST;
+        }
         mailService.sendMail(map.get("email"));
 
         return CREATED;
-    }
-
-    @PostMapping("/signup/confirm")
-    public ResponseEntity<Void> mailVerification(@RequestBody Map<String, String> map) throws Exception {
-        mailService.verifyMail(map);
-
-        return OK;
     }
 
     @GetMapping("/login")

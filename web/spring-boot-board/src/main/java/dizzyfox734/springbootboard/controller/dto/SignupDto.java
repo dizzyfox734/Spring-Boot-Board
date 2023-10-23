@@ -23,4 +23,7 @@ public class SignupDto {
 
     @NotEmpty(message = "이메일은 필수항목입니다.")
     private String email;
+
+    @NotEmpty(message = "코드번호는 필수항목입니다.")
+    private String emailConfirm;
 }

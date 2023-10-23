@@ -29,7 +29,7 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf.ignoringRequestMatchers(toH2Console())
-                        .ignoringRequestMatchers("/user/signup/confirm"))
+                        .ignoringRequestMatchers("/user/signup/sendMail"))
 
                 .headers(headers -> headers.addHeaderWriter(new XFrameOptionsHeaderWriter(
                         XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN)))
