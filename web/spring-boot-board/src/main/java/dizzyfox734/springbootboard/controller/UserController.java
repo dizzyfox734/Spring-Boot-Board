@@ -45,7 +45,7 @@ public class UserController {
         }
 
         if (userService.validateDuplicateUser(signupDto.getUsername())) {
-            bindingResult.reject("signupFailed", "이미 등록된 사용자입니다.");
+            bindingResult.reject("signupFailed", "이미 등록된 아이디입니다.");
             return "user/signup";
         };
 
@@ -58,7 +58,6 @@ public class UserController {
             bindingResult.rejectValue("emailConfirm", "emailConfirmInCorrect",
                     "인증코드가 일치하지 않습니다.");
             return "user/signup";
-
         }
 
         userService.create(signupDto);

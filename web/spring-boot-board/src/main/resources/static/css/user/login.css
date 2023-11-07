@@ -1,0 +1,32 @@
+.find_wrap {
+    padding: 20px 0 35px;
+    /*text-align: center;*/
+}
+
+.find_wrap li {
+    position: relative;
+    display: inline-block;
+}
+
+.find_wrap li+li {
+    padding-left: 28px
+}
+
+.find_wrap li+li::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 12px;
+    width: 1px;
+    height: 12px;
+    border-radius: .5px;
+    background-color: #dadada
+}
+
+.find_wrap .find_text {
+    display: inline-block;
+    font-size: 14px;
+    line-height: 17px;
+    text-decoration: none;
+    color: #888;
+}
