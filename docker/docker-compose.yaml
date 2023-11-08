@@ -15,11 +15,30 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_ROOT_HOST: ${MYSQL_ROOT_HOST}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_LOG_DIR: ${MYSQL_LOG_DIR}
     volumes:
-      - ../database:/var/lib/mysql
+      - ../logs/mariadb:${MYSQL_LOG_DIR}
+      - ../database:${MYSQL_DATA_DIR}
     ports:
       - ${MYSQL_HOST_PORT}:3306
         #  restart: no
+    networks:
+      - app_net
+
+  redis:
+    container_name: ${PROJECT_NAME}_redis
+    build:
+      context: ./redis
+    environment:
+      # CLIENTPORT: ${REDIS_PORT}
+      REDIS_EXPOSED_PORT: ${REDIS_EXPOSED_PORT}
+      REDIS_LOG_DIR: ${REDIS_LOG_DIR}
+    volumes:
+      - ../redis-data:/data
+      - ../logs/redis:${REDIS_LOG_DIR}
+        #- ./redis/redis.cnf:/usr/local/bin/redis.conf
+    networks:
+      - app_net
 
   web:
     container_name: ${PROJECT_NAME}_web
@@ -37,8 +56,11 @@ services:
       - 8080
     ports:
       - ${WEB_HOST_PORT}:8080
+    networks:
+      - app_net
     depends_on:
       - database
+      - redis
         #  restart: no
 
   # nginx:
@@ -56,3 +78,9 @@ services:
   #     - web
   #   restart: always
 
+networks:
+  app_net:
+    driver: bridge
+    ipam:
+      driver:
+        default

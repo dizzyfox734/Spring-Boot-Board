@@ -1,11 +1,10 @@
 #!/bin/bash
 
-REPOSITORY=/home/ec2-user/app/spring-boot-board
+REPOSITORY=/home/ec2-user/docker/Spring-Boot-Board
 PROJECT_NAME=web/spring-boot-board
 JAR_DIR=build/libs
 BACKUP_DIR=backup
 SCRIPT_DIR=docker/scripts
-DATABASE_DIT=database
 
 cd $REPOSITORY/$PROJECT_NAME
 
@@ -19,9 +18,6 @@ sh ./destroy.sh
 
 if ! [[ -d $REPOSITORY/$BACKUP_DIR ]]; then
 	mkdir $REPOSITORY/$BACKUP_DIR
-fi
-if ! [[ -d $REPOSITORY/$DATABASE_DIT ]]; then
-	mkdir $REPOSITORY/$DATABASE_DIT
 fi
 
 echo "> Backup previous version"
