@@ -2,29 +2,6 @@ version: '3'
 
 services:
 
-  #database:
-  #container_name: ${PROJECT_NAME}_db
-  #build:  
-  #context: ./mysql
-  #args:
-  #- MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-  #command: --default-authentication-plugin=mysql_native_password
-  #environment:
-  #MYSQL_DATABASE: ${MYSQL_DATABASE}
-  #MYSQL_USER: ${MYSQL_USER}
-  #MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-  #MYSQL_ROOT_HOST: ${MYSQL_ROOT_HOST}
-  #MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-  #MYSQL_LOG_DIR: ${MYSQL_LOG_DIR}
-  #volumes:
-  #- ../logs/mariadb:${MYSQL_LOG_DIR}
-  #- ../database:${MYSQL_DATA_DIR}
-  #ports:
-  #- ${MYSQL_HOST_PORT}:3306
-        #  restart: no
-        #networks:
-        #- app_net
-
   redis:
     container_name: ${PROJECT_NAME}_redis
     build:
@@ -44,12 +21,6 @@ services:
     container_name: ${PROJECT_NAME}_web
     build:
       context: ./web
-    environment:
-      SPRING_DATASOURCE_URL: ${WEB_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${WEB_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${WEB_DATASOURCE_PASSWORD}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - ../web/${PROJECT_NAME}/build/libs/${PROJECT_NAME}-${WEB_VERSION}.jar:/app.jar
     expose:
@@ -59,7 +30,6 @@ services:
     networks:
       - app_net
     depends_on:
-      #- database
       - redis
         #  restart: no
 
