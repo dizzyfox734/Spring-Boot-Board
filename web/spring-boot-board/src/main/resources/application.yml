@@ -1,24 +1,17 @@
 spring:
 
-  h2:
-    console:
-      enabled: true
-
-  datasource:
-    url: jdbc:h2:~/board
-    driver-class-name: org.h2.Driver
-    username: sa
-
   sql:
     init:
       mode: always
 
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.MySQL57InnoDBDialect
     hibernate:
       ddl-auto: create
     properties:
       hibernate:
+        dialect:
+          storage_engine: innodb
         format_sql: true
         show_sql: true
     defer-datasource-initialization: true
@@ -26,8 +19,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: dizzyfox734@gmail.com
-    password: efsfs # 비번 변경하셈
+    username: {이메일}
+    password: {앱 비밀번호}
     properties:
       mail:
         smtp:
@@ -42,11 +35,11 @@ spring:
     suffix: .html
     cache: false
 
-  devtools:
-    livereload:
-      enabled: true
-    restart:
-      enabled: true
+      #devtools:
+      #livereload:
+      #enabled: true
+      #restart:
+      #enabled: true
 
   redis:
     host: spring-boot-board_redis

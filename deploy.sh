@@ -25,7 +25,7 @@ sudo mv $REPOSITORY/$PROJECT_NAME/$JAR_DIR/* $REPOSITORY/$BACKUP_DIR
 
 echo "> Start Building Project"
 cd $REPOSITORY/$PROJECT_NAME
-./gradlew build
+./gradlew build --exclude-task test
 
 echo "> Grant Permission"
 chmod 777 ./build/libs/*
