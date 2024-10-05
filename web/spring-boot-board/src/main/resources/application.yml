@@ -1,30 +1,29 @@
 spring:
+  config:
+    import:
+      - classpath:/yaml/application-local-db.yml
+      - classpath:/yaml/application-mail.yml
+      - classpath:/yaml/application-real.properties
+  profiles:
+    group:
+      logging: dev, mail
+      local: local-db, mail
+    active: local
+  devtools:
+    add-properties: false
 
-#  sql:
-#    init:
-#      mode: always
-
-  jpa:
-    database-platform: org.hibernate.dialect.MySQL8Dialect
-    hibernate:
-      ddl-auto: none
-    properties:
-      hibernate:
-        dialect:
-          storage_engine: innodb
-        format_sql: true
-        show_sql: true
+#  jpa:
+#    database-platform: org.hibernate.dialect.MySQL8Dialect
+#    hibernate:
+#      ddl-auto: none
+#    properties:
+#      hibernate:
+#        dialect:
+#          storage_engine: innodb
+#        format_sql: true
+#        show_sql: true
 #    defer-datasource-initialization: true
 
-  mail:
-    host: smtp.gmail.com
-    properties:
-      mail:
-        smtp:
-          auth: true
-          timeout: 5000
-          starttls:
-            enable: true
 
   thymeleaf:
     prefix:
@@ -38,6 +37,6 @@ spring:
       #restart:
       #enabled: true
 
-  redis:
-    host: spring-boot-board_redis
-    port: 6379
+#  redis:
+#    host: spring-boot-board_redis
+#    port: 6379

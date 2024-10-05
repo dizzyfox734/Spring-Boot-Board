@@ -1,6 +1,5 @@
 package dizzyfox734.springbootboard.common.config;
 
-import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -29,12 +28,14 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf.ignoringRequestMatchers(toH2Console())
+                        .ignoringRequestMatchers(toH2Console()) // H2 콘솔에 대한 CSRF 보호 비활성화
                         .ignoringRequestMatchers("/user/signup/sendMail"))
 
                 .headers(headers -> headers.addHeaderWriter(new XFrameOptionsHeaderWriter(
                         XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN)))
 
                 .authorizeHttpRequests((authorize) -> authorize
+                        .requestMatchers(toH2Console()).permitAll() // H2 콘솔 접근 허용
                         .requestMatchers("/**").permitAll())
 
                 .formLogin(login -> login
