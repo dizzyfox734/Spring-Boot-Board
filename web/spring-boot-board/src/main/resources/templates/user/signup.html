@@ -7,6 +7,7 @@
         </div>
     </div>
     <form th:action="@{/user/signup}" th:object="${signupDto}" method="post">
+        <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
         <div th:replace="~{common/form_errors :: formErrorsFragment}"></div>
         <div class="mb-3">
             <label for="username" class="form-label">ID</label>

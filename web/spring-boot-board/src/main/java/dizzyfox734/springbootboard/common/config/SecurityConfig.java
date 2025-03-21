@@ -28,8 +28,7 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf.ignoringRequestMatchers(toH2Console())
-                        .ignoringRequestMatchers(toH2Console()) // H2 콘솔에 대한 CSRF 보호 비활성화
-                        .ignoringRequestMatchers("/user/signup/sendMail"))
+                        .ignoringRequestMatchers(toH2Console())) // H2 콘솔에 대한 CSRF 보호 비활성화
 
                 .headers(headers -> headers.addHeaderWriter(new XFrameOptionsHeaderWriter(
                         XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN)))
