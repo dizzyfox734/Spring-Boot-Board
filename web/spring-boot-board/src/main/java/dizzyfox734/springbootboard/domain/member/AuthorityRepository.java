@@ -1,4 +1,4 @@
-package dizzyfox734.springbootboard.domain.user;
+package dizzyfox734.springbootboard.domain.member;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

@@ -2,11 +2,11 @@ package dizzyfox734.springbootboard.controller;
 
 import dizzyfox734.springbootboard.controller.dto.CommentDto;
 import dizzyfox734.springbootboard.domain.comment.Comment;
+import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.post.Post;
-import dizzyfox734.springbootboard.domain.user.User;
 import dizzyfox734.springbootboard.service.CommentService;
 import dizzyfox734.springbootboard.service.PostService;
-import dizzyfox734.springbootboard.service.UserService;
+import dizzyfox734.springbootboard.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,7 +29,7 @@ public class CommentController {
 
     private final PostService postService;
     private final CommentService commentService;
-    private final UserService userService;
+    private final MemberService memberService;
 
     /**
      * 댓글 저장
@@ -39,13 +39,13 @@ public class CommentController {
     public String create(Model model, @PathVariable("id") Integer id, @Valid CommentDto commentDto,
                                BindingResult bindingResult,Principal principal) {
         Post post = this.postService.findOne(id);
-        User user = this.userService.getUser(principal.getName());
+        Member member = this.memberService.getMember(principal.getName());
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("post", post);
             return "post/detail";
         }
-        Comment comment = this.commentService.create(post, commentDto.getContent(), user);
+        Comment comment = this.commentService.create(post, commentDto.getContent(), member);
 
         return String.format("redirect:/post/detail/%s#comment_%s", id, comment.getId());
     }

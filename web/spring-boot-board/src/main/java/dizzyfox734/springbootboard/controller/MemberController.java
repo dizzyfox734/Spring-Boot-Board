@@ -1,10 +1,12 @@
 package dizzyfox734.springbootboard.controller;
 
+import dizzyfox734.springbootboard.controller.dto.FindIdDto;
+import dizzyfox734.springbootboard.controller.dto.FindPwdDto;
 import dizzyfox734.springbootboard.controller.dto.SignupDto;
-import dizzyfox734.springbootboard.controller.dto.UserModifyDto;
-import dizzyfox734.springbootboard.domain.user.User;
+import dizzyfox734.springbootboard.controller.dto.MemberModifyDto;
+import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.service.MailService;
-import dizzyfox734.springbootboard.service.UserService;
+import dizzyfox734.springbootboard.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,48 +21,48 @@ import java.util.Map;
 
 import static dizzyfox734.springbootboard.common.utils.constants.ResponseConstants.*;
 
+@RequestMapping("/member")
 @RequiredArgsConstructor
 @Controller
-@RequestMapping("/user")
-public class UserController {
+public class MemberController {
 
-    private final UserService userService;
+    private final MemberService memberService;
     private final MailService mailService;
 
     @GetMapping("/signup")
     public String signup(SignupDto signupDto) {
-        return "user/signup";
+        return "member/signup";
     }
 
     @PostMapping("/signup")
     public String signup(@Valid SignupDto signupDto, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
-            return "user/signup";
+            return "member/signup";
         }
 
         if (!signupDto.getPassword1().equals(signupDto.getPassword2())) {
             bindingResult.rejectValue("password2", "passwordInCorrect",
                     "패스워드가 일치하지 않습니다.");
-            return "user/signup";
+            return "member/signup";
         }
 
-        if (userService.validateDuplicateUser(signupDto.getUsername())) {
+        if (memberService.validateDuplicateMember(signupDto.getUsername())) {
             bindingResult.reject("signupFailed", "이미 등록된 아이디입니다.");
-            return "user/signup";
+            return "member/signup";
         };
 
-        if (userService.validateDuplicateEmail(signupDto.getEmail())) {
+        if (memberService.validateDuplicateEmail(signupDto.getEmail())) {
             bindingResult.reject("signupFailed", "이미 등록된 이메일입니다.");
-            return "user/signup";
+            return "member/signup";
         }
 
         if (!mailService.verifyMail(signupDto.getEmail(), signupDto.getEmailConfirm())) {
             bindingResult.rejectValue("emailConfirm", "emailConfirmInCorrect",
                     "인증코드가 일치하지 않습니다.");
-            return "user/signup";
+            return "member/signup";
         }
 
-        userService.create(signupDto);
+        memberService.create(signupDto);
 
         return "redirect:/";
     }
@@ -78,15 +80,15 @@ public class UserController {
 
     @GetMapping("/login")
     public String login() {
-        return "user/login";
+        return "member/login";
     }
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/info")
-    public String info(Model model, Principal principal, UserModifyDto userModifyDto) {
+    public String info(Model model, Principal principal, MemberModifyDto memberModifyDto) {
         model.addAttribute("username", principal.getName());
 
-        return "user/info";
+        return "member/info";
     }
 
     /**
@@ -94,20 +96,20 @@ public class UserController {
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/modify")
-    public String update(@Valid UserModifyDto userModifyDto, BindingResult bindingResult, Principal principal) {
+    public String update(@Valid MemberModifyDto memberModifyDto, BindingResult bindingResult, Principal principal) {
         if (bindingResult.hasErrors()) {
-            return "user/info";
+            return "member/info";
         }
 
-        if (!userModifyDto.getPassword1().equals(userModifyDto.getPassword2())) {
+        if (!memberModifyDto.getPassword1().equals(memberModifyDto.getPassword2())) {
             bindingResult.rejectValue("password2", "passwordInCorrect",
                     "패스워드가 일치하지 않습니다.");
-            return "user/info";
+            return "member/info";
         }
 
-        User user = userService.getUser(principal.getName());
-        userService.modify(user, userModifyDto.getPassword1());
+        Member member = memberService.getMember(principal.getName());
+        memberService.modify(member, memberModifyDto.getPassword1());
 
-        return "redirect:/user/logout";
+        return "redirect:/member/logout";
     }
 }

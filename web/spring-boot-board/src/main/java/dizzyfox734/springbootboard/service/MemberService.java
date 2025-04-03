@@ -1,10 +1,9 @@
 package dizzyfox734.springbootboard.service;
 
 import dizzyfox734.springbootboard.controller.dto.SignupDto;
-import dizzyfox734.springbootboard.controller.dto.UserModifyDto;
-import dizzyfox734.springbootboard.domain.user.Authority;
-import dizzyfox734.springbootboard.domain.user.User;
-import dizzyfox734.springbootboard.domain.user.UserRepository;
+import dizzyfox734.springbootboard.domain.member.Authority;
+import dizzyfox734.springbootboard.domain.member.Member;
+import dizzyfox734.springbootboard.domain.member.MemberRepository;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,19 +16,19 @@ import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
-public class UserService {
+public class MemberService {
 
-    private final UserRepository userRepository;
+    private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public User create(SignupDto signupDto) {
+    public Member create(SignupDto signupDto) {
 
         Authority authority = Authority.builder()
                 .name("ROLE_USER")
                 .build();
 
-        User user = User.builder()
+        Member member = Member.builder()
                 .username(signupDto.getUsername())
                 .password(passwordEncoder.encode(signupDto.getPassword1()))
                 .name(signupDto.getName())
@@ -38,32 +37,32 @@ public class UserService {
                 .activated(true)
                 .build();
 
-        this.userRepository.save(user);
+        this.memberRepository.save(member);
 
-        return user;
+        return member;
     }
 
     @Transactional
-    public User modify(User user, String password) {
-        user.setPassword(passwordEncoder.encode(password));
+    public Member modify(Member member, String password) {
+        member.setPassword(passwordEncoder.encode(password));
 
-        this.userRepository.save(user);
+        this.memberRepository.save(member);
 
-        return user;
+        return member;
     }
 
-    public boolean validateDuplicateUser(String username) {
-        return userRepository.findOneWithAuthoritiesByUsername(username).isPresent();
+    public boolean validateDuplicateMember(String username) {
+        return memberRepository.findOneWithAuthoritiesByUsername(username).isPresent();
     }
 
     public boolean validateDuplicateEmail(String email) {
-        return userRepository.findOneWithAuthoritiesByEmail(email).isPresent();
+        return memberRepository.findOneWithAuthoritiesByEmail(email).isPresent();
     }
 
-    public User getUser(String username) {
-        Optional<User> user = this.userRepository.findOneWithAuthoritiesByUsername(username);
-        if (user.isPresent()) {
-            return user.get();
+    public Member getMember(String username) {
+        Optional<Member> member = this.memberRepository.findOneWithAuthoritiesByUsername(username);
+        if (member.isPresent()) {
+            return member.get();
         } else {
             throw new DataNotFoundException("user not found");
         }

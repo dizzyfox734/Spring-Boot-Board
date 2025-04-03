@@ -13,7 +13,7 @@ function sendMail() {
         email: email.value,
     }
 
-    fetch('/user/signup/sendMail', {
+    fetch('/member/signup/sendMail', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

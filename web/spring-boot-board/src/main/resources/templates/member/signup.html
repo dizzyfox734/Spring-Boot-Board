@@ -6,7 +6,7 @@
             <h4>회원가입</h4>
         </div>
     </div>
-    <form th:action="@{/user/signup}" th:object="${signupDto}" method="post">
+    <form th:action="@{/member/signup}" th:object="${signupDto}" method="post">
         <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
         <div th:replace="~{common/form_errors :: formErrorsFragment}"></div>
         <div class="mb-3">
@@ -40,7 +40,7 @@
         <button type="submit" class="btn btn-primary">회원가입</button>
     </form>
 
-    <script type="text/javascript" th:src="@{/js/user/signup.js}"></script>
+    <script type="text/javascript" th:src="@{/js/member/signup.js}"></script>
 </div>
 
 </html>

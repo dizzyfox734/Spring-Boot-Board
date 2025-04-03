@@ -2,7 +2,7 @@ package dizzyfox734.springbootboard.domain.post;
 
 import dizzyfox734.springbootboard.domain.BaseTimeEntity;
 import dizzyfox734.springbootboard.domain.comment.Comment;
-import dizzyfox734.springbootboard.domain.user.User;
+import dizzyfox734.springbootboard.domain.member.Member;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -32,5 +32,5 @@ public class Post extends BaseTimeEntity {
     private List<Comment> commentList;
 
     @ManyToOne
-    private User author;
+    private Member author;
 }

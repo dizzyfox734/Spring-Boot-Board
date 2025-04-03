@@ -2,10 +2,10 @@ package dizzyfox734.springbootboard.controller;
 
 import dizzyfox734.springbootboard.controller.dto.CommentDto;
 import dizzyfox734.springbootboard.controller.dto.PostDto;
+import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.post.Post;
-import dizzyfox734.springbootboard.domain.user.User;
 import dizzyfox734.springbootboard.service.PostService;
-import dizzyfox734.springbootboard.service.UserService;
+import dizzyfox734.springbootboard.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,7 +25,7 @@ import java.security.Principal;
 public class PostController {
 
     private final PostService postService;
-    private final UserService userService;
+    private final MemberService memberService;
 
     @GetMapping("/list")
     public String list(Model model, @RequestParam(value="page", defaultValue="0") int page,
@@ -60,8 +60,8 @@ public class PostController {
         if (bindingResult.hasErrors()) {
             return "post/form";
         }
-        User user = this.userService.getUser(principal.getName());
-        this.postService.create(postDto.getTitle(), postDto.getContent(), user);
+        Member member = this.memberService.getMember(principal.getName());
+        this.postService.create(postDto.getTitle(), postDto.getContent(), member);
 
         return "redirect:/post/list";
     }

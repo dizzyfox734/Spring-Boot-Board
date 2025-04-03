@@ -1,4 +1,4 @@
-package dizzyfox734.springbootboard.domain.user;
+package dizzyfox734.springbootboard.domain.member;
 
 import dizzyfox734.springbootboard.domain.BaseTimeEntity;
 import lombok.*;
@@ -6,13 +6,12 @@ import jakarta.persistence.*;
 import java.util.Set;
 
 @Entity
-@Table(name = "users")
 @Getter
 @Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class User extends BaseTimeEntity {
+public class Member extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,8 +33,8 @@ public class User extends BaseTimeEntity {
 
     @ManyToMany
     @JoinTable(
-            name = "user_authority",
-            joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "id")},
+            name = "member_authority",
+            joinColumns = {@JoinColumn(name = "member_id", referencedColumnName = "id")},
             inverseJoinColumns = {@JoinColumn(name = "authority_name", referencedColumnName = "name")})
     private Set<Authority> authorities;
 

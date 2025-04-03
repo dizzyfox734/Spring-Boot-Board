@@ -1,8 +1,8 @@
 package dizzyfox734.springbootboard.service;
 
 import dizzyfox734.springbootboard.domain.comment.Comment;
+import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.post.Post;
-import dizzyfox734.springbootboard.domain.user.User;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.domain.post.PostRepository;
 import jakarta.persistence.criteria.*;
@@ -43,11 +43,11 @@ public class PostService {
         }
     }
 
-    public void create(String title, String content, User user) {
+    public void create(String title, String content, Member member) {
         Post post = new Post();
         post.setTitle(title);
         post.setContent(content);
-        post.setAuthor(user);
+        post.setAuthor(member);
         this.postRepository.save(post);
     }
 
@@ -70,9 +70,9 @@ public class PostService {
             @Override
             public Predicate toPredicate(Root<Post> p, CriteriaQuery<?> query, CriteriaBuilder cb) {
                 query.distinct(true);  // 중복 제거
-                Join<Post, User> u1 = p.join("author", JoinType.LEFT);
+                Join<Post, Member> u1 = p.join("author", JoinType.LEFT);
                 Join<Post, Comment> c = p.join("commentList", JoinType.LEFT);
-                Join<Comment, User> u2 = c.join("author", JoinType.LEFT);
+                Join<Comment, Member> u2 = c.join("author", JoinType.LEFT);
 
                 return cb.or(cb.like(p.get("title"), "%" + kw + "%"),
                         cb.like(p.get("content"), "%" + kw + "%"),

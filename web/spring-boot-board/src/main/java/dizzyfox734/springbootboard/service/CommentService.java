@@ -1,9 +1,9 @@
 package dizzyfox734.springbootboard.service;
 
 import dizzyfox734.springbootboard.domain.comment.Comment;
+import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.post.Post;
 import dizzyfox734.springbootboard.domain.comment.CommentRepository;
-import dizzyfox734.springbootboard.domain.user.User;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,7 +17,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
 
 
-    public Comment create(Post post, String content, User author) {
+    public Comment create(Post post, String content, Member author) {
         Comment comment = new Comment();
         comment.setContent(content);
         comment.setPost(post);

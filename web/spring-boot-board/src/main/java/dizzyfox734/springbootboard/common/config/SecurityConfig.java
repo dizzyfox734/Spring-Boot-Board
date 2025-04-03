@@ -38,9 +38,9 @@ public class SecurityConfig {
                         .requestMatchers("/**").permitAll())
 
                 .formLogin(login -> login
-                        .loginPage("/user/login").defaultSuccessUrl("/"))
+                        .loginPage("/member/login").defaultSuccessUrl("/"))
 
-                .logout(logout -> logout.logoutRequestMatcher(new AntPathRequestMatcher("/user/logout"))
+                .logout(logout -> logout.logoutRequestMatcher(new AntPathRequestMatcher("/member/logout"))
                         .logoutSuccessUrl("/").invalidateHttpSession(true));
 
         return http.build();
