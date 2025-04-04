@@ -5,6 +5,7 @@ import dizzyfox734.springbootboard.controller.dto.FindPwdDto;
 import dizzyfox734.springbootboard.controller.dto.SignupDto;
 import dizzyfox734.springbootboard.controller.dto.MemberModifyDto;
 import dizzyfox734.springbootboard.domain.member.Member;
+import dizzyfox734.springbootboard.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.service.MailService;
 import dizzyfox734.springbootboard.service.MemberService;
 import jakarta.validation.Valid;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
 import java.util.Map;
@@ -29,11 +31,13 @@ public class MemberController {
     private final MemberService memberService;
     private final MailService mailService;
 
+    @PreAuthorize("isAnonymous")
     @GetMapping("/signup")
     public String signup(SignupDto signupDto) {
         return "member/signup";
     }
 
+    @PreAuthorize("isAnonymous")
     @PostMapping("/signup")
     public String signup(@Valid SignupDto signupDto, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
@@ -67,6 +71,7 @@ public class MemberController {
         return "redirect:/";
     }
 
+    @PreAuthorize("isAnonymous")
     @PostMapping("/signup/sendMail")
     public ResponseEntity<Void> sendMail(@RequestBody Map<String, String> map) throws Exception {
         String email = map.get("email");
@@ -78,6 +83,37 @@ public class MemberController {
         return CREATED;
     }
 
+    @PreAuthorize("isAnonymous")
+    @GetMapping("/find/id")
+    public String findId(FindIdDto findIdDto) {
+        return "member/findId";
+    }
+
+    @PreAuthorize("isAnonymous")
+    @GetMapping("/find/pwd")
+    public String findPwd(FindPwdDto findPwdDto) {
+        return "member/findPwd";
+    }
+
+    @PreAuthorize("isAnonymous")
+    @PostMapping("/find/id")
+    public String findId(@Valid FindIdDto findIdDto, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) {
+            return "member/find/id";
+        }
+
+        try {
+            String username = memberService.findUsername(findIdDto.getName(), findIdDto.getEmail());
+
+            redirectAttributes.addFlashAttribute("username", username);
+            return "redirect:/member/find/id";
+        } catch (DataNotFoundException e) {
+            redirectAttributes.addAttribute("error", true);
+            return "redirect:/member/find/id";
+        }
+    }
+
+    @PreAuthorize("isAnonymous")
     @GetMapping("/login")
     public String login() {
         return "member/login";

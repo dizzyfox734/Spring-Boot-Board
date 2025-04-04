@@ -67,4 +67,14 @@ public class MemberService {
             throw new DataNotFoundException("user not found");
         }
     }
+
+    @Transactional
+    public String findUsername(String name, String email) {
+        Optional<Member> member = this.memberRepository.findByNameAndEmail(name, email);
+        if (member.isPresent()) {
+            return member.get().getUsername();
+        } else {
+            throw new DataNotFoundException("No user found with the provided name and email");
+        }
+    }
 }
