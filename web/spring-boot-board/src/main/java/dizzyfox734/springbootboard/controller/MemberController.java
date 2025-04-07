@@ -37,6 +37,13 @@ public class MemberController {
         return "member/signup";
     }
 
+    /**
+     * 회원 가입을 처리하고 적절한 페이지로 리다이렉트
+     *
+     * @param signupDto 회원 가입에 필요한 데이터를 담은 DTO
+     * @param bindingResult 폼 검증 결과
+     * @return 회원 가입 후 리다이렉트할 페이지
+     */
     @PreAuthorize("isAnonymous")
     @PostMapping("/signup")
     public String signup(@Valid SignupDto signupDto, BindingResult bindingResult) {
@@ -53,7 +60,7 @@ public class MemberController {
         if (memberService.validateDuplicateMember(signupDto.getUsername())) {
             bindingResult.reject("signupFailed", "이미 등록된 아이디입니다.");
             return "member/signup";
-        };
+        }
 
         if (memberService.validateDuplicateEmail(signupDto.getEmail())) {
             bindingResult.reject("signupFailed", "이미 등록된 이메일입니다.");
@@ -71,14 +78,21 @@ public class MemberController {
         return "redirect:/";
     }
 
+    /**
+     * 회원 가입을 위한 이메일 인증 코드 전송
+     *
+     * @param map 이메일 정보가 담긴 Map
+     * @return HTTP 응답 상태
+     * @throws Exception 이메일 전송 중 발생할 수 있는 예외
+     */
     @PreAuthorize("isAnonymous")
     @PostMapping("/signup/sendMail")
-    public ResponseEntity<Void> sendMail(@RequestBody Map<String, String> map) throws Exception {
+    public ResponseEntity<Void> sendSignUpMail(@RequestBody Map<String, String> map) throws Exception {
         String email = map.get("email");
         if (email.isEmpty()) {
             return BAD_REQUEST;
         }
-        mailService.sendMail(map.get("email"));
+        mailService.sendSignUpCheckCodeMail(map.get("email"));
 
         return CREATED;
     }
@@ -95,6 +109,14 @@ public class MemberController {
         return "member/findPwd";
     }
 
+    /**
+     * 아이디 찾기 요청 처리
+     *
+     * @param findIdDto 아이디 찾기에 필요한 데이터를 담은 DTO
+     * @param bindingResult 폼 검증 결과
+     * @param redirectAttributes 리다이렉트 시 전달할 속성
+     * @return 찾은 아이디 또는 오류를 담은 아이디 찾기 페이지
+     */
     @PreAuthorize("isAnonymous")
     @PostMapping("/find/id")
     public String findId(@Valid FindIdDto findIdDto, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
@@ -113,6 +135,33 @@ public class MemberController {
         }
     }
 
+    /**
+     * 비밀번호 찾기 요청 처리
+     *
+     * @param findPwdDto 비밀번호 찾기에 필요한 데이터를 담은 DTO
+     * @param redirectAttributes 리다이렉트 시 전달할 속성
+     * @return 비밀번호 찾기 결과 페이지
+     */
+    @PreAuthorize("isAnonymous")
+    @PostMapping("/reset/pwd")
+    public String resetPwd(@Valid FindPwdDto findPwdDto, RedirectAttributes redirectAttributes) {
+        boolean existEmail = memberService.existEmail(findPwdDto.getName(), findPwdDto.getEmail(), findPwdDto.getUsername());
+        if (!existEmail) {
+            redirectAttributes.addAttribute("error", "해당 정보로 회원를 찾을 수 없습니다.");
+            return "redirect:/member/find/pwd";
+        }
+
+        try {
+            String temporaryPwd = memberService.resetPasswordAndSendEmail(findPwdDto.getName(), findPwdDto.getEmail(), findPwdDto.getUsername());
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addAttribute("error", e.getMessage());
+            return "redirect:/member/find/pwd";
+        }
+
+        return "redirect:/member/login";
+    }
+
     @PreAuthorize("isAnonymous")
     @GetMapping("/login")
     public String login() {
@@ -128,7 +177,13 @@ public class MemberController {
     }
 
     /**
-     * 유저 정보 변경
+     * 회원 정보 수정
+     * (현재 비밀번호만 수정 가능)
+     *
+     * @param memberModifyDto 회원 정보 수정에 필요한 데이터를 담은 DTO
+     * @param bindingResult 폼 검증 결과
+     * @param principal 인증된 회원 정보
+     * @return 수정 완료 후 리다이렉트할 페이지
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/modify")

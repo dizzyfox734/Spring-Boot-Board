@@ -26,7 +26,7 @@ public class MemberSecurityService implements UserDetailsService {
     public UserDetails loadUserByUsername(final String username) {
         return memberRepository.findOneWithAuthoritiesByUsername(username)
                 .map(member -> createMember(username, member))
-                .orElseThrow(() -> new UsernameNotFoundException(username + " -> 사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new UsernameNotFoundException(username + " -> 회원를 찾을 수 없습니다."));
     }
 
     private org.springframework.security.core.userdetails.User createMember(String username, Member member) {
