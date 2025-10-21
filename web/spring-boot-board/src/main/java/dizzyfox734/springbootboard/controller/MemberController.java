@@ -1,9 +1,6 @@
 package dizzyfox734.springbootboard.controller;
 
-import dizzyfox734.springbootboard.controller.dto.FindIdDto;
-import dizzyfox734.springbootboard.controller.dto.FindPwdDto;
-import dizzyfox734.springbootboard.controller.dto.SignupDto;
-import dizzyfox734.springbootboard.controller.dto.MemberModifyDto;
+import dizzyfox734.springbootboard.controller.dto.*;
 import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.service.MailService;
@@ -30,6 +27,28 @@ public class MemberController {
 
     private final MemberService memberService;
     private final MailService mailService;
+
+    @PreAuthorize("isAnonymous")
+    @GetMapping("/register")
+    public String register(RegisterAgreementDto agreementDto) {
+        return "member/register";
+    }
+
+    /**
+     * 이용약관 동의 체크 후 회원가입 페이지로 리다이렉트
+     *
+     * @param registerAgreementDto
+     * @return 리다이렉트할 회원가입 페이지
+     */
+    @PreAuthorize("isAnonymous")
+    @PostMapping("/register")
+    public String register(@Valid RegisterAgreementDto registerAgreementDto, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return "member/register"; // 동의 안 했을 경우 다시 폼으로
+        }
+
+        return "redirect:/member/signup";
+    }
 
     @PreAuthorize("isAnonymous")
     @GetMapping("/signup")
