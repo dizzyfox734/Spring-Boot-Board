@@ -14,4 +14,8 @@ REDIS_PORT=
 REDIS_EXPOSED_PORT=
 REDIS_LOG_DIR=/data/redis.log
 
+#Spring Boot
+SPRING_MAIL_USERNAME=
+SPRING_MAIL_PASSWORD=
+
 WEB_VERSION=0.0.1-SNAPSHOT # version in build.gradle file

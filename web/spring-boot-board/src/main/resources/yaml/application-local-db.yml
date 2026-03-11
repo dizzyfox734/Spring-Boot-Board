@@ -23,5 +23,3 @@ spring:
         show_sql: true
         format_sql: true
     defer-datasource-initialization: true
-
-message: hi local

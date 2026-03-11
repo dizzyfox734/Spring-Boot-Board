@@ -3,7 +3,7 @@ spring:
     import:
       - classpath:/yaml/application-local-db.yml
       - classpath:/yaml/application-mail.yml
-      - classpath:/yaml/application-real.properties
+      - optional:classpath:/yaml/application-real.properties
   profiles:
     group:
       logging: dev, mail
@@ -38,5 +38,5 @@ spring:
       #enabled: true
 
   redis:
-    host: spring-boot-board_redis
+    host: localhost #spring-boot-board_redis
     port: 6379
