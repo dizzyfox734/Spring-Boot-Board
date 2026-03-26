@@ -70,8 +70,8 @@ body:
         - label: 모든 테스트 통과 (성공/실패 케이스 포함)
         - label: 테스트 커버리지 확인
         - label: PR 리뷰 승인 완료
-      validations:
-        required: true
+    validations:
+      required: true
 
   - type: textarea
     id: reference
