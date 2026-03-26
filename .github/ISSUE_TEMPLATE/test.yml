@@ -1,0 +1,83 @@
+name: Test
+description: 테스트 코드 작성 및 검증 작업
+title: "[Test] 내용을 짧게 입력하세요"
+labels: ["test"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 개요
+      description: 어떤 테스트를 작성하려는지 간단히 적어주세요.
+      placeholder: 예) MemberService 회원가입 기능 테스트 작성
+    validations:
+      required: true
+
+  - type: input
+    id: target
+    attributes:
+      label: 테스트 대상
+      description: 테스트할 클래스/메서드를 적어주세요.
+      placeholder: 예) MemberService.register()
+    validations:
+      required: true
+
+  - type: dropdown
+    id: test_type
+    attributes:
+      label: 테스트 유형
+      options:
+        - Unit Test
+        - Integration Test
+        - Controller Test
+        - Repository Test
+        - 기타
+    validations:
+      required: true
+
+  - type: textarea
+    id: scenarios
+    attributes:
+      label: 테스트 시나리오
+      description: 검증할 케이스를 체크리스트로 작성해주세요. (성공/실패/엣지 케이스)
+      placeholder: |
+        예)
+        - [ ] 정상 회원가입이 된다
+        - [ ] 중복 username이면 예외가 발생한다
+        - [ ] 중복 email이면 예외가 발생한다
+        - [ ] 비밀번호가 암호화되어 저장된다
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: 복잡도
+      description: 테스트의 복잡도를 선택해주세요.
+      options:
+        - Low (< 1시간)
+        - Medium (1-3시간)
+        - High (> 3시간)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: done
+    attributes:
+      label: 완료 조건
+      description: 이 이슈 완료 기준을 적어주세요. (모두 체크되어야 DONE)
+      options:
+        - label: 테스트 코드 작성 완료
+        - label: 모든 테스트 통과 (성공/실패 케이스 포함)
+        - label: 테스트 커버리지 확인
+        - label: PR 리뷰 승인 완료
+      validations:
+        required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: 참고 사항
+      description: 관련 이슈나 PR 링크를 남겨주세요. (#123 형식)
+      placeholder: 예) #12 Feature 이슈
+    validations:
+      required: false
