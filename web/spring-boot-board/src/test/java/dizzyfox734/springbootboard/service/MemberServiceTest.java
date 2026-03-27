@@ -145,4 +145,50 @@ public class MemberServiceTest {
         verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername(username);
         verify(memberRepository, never()).save(any(Member.class));
     }
+
+    @Test
+    @DisplayName("validateDuplicateEmail(): email이 존재하면 중복임을 반환한다")
+    void shouldReturnDuplicated_whenEmailExists() {
+        // given
+        String email = "test@example.com";
+        Authority authority = Authority.builder()
+                .name("ROLE_USER")
+                .build();
+        Member existingUser = new Member(
+                null,
+                "testuser",
+                "encodedPassword",
+                "홍길동",
+                email,
+                true,
+                Collections.singleton(authority)
+        );
+        when(memberRepository.findOneWithAuthoritiesByEmail(email))
+                .thenReturn(Optional.of(existingUser));
+
+        // when
+        boolean result = memberService.validateDuplicateEmail(email);
+
+        // then
+        assertTrue(result);
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByEmail(email);
+        verify(memberRepository, never()).save(any(Member.class));
+    }
+
+    @Test
+    @DisplayName("validateDuplicateEmail(): email이 존재하지 않으면 중복이 아님을 반환한다")
+    void shouldReturnNotDuplicated_whenEmailDoesNotExist() {
+        // given
+        String email = "test@example.com";
+        when(memberRepository.findOneWithAuthoritiesByEmail(email))
+                .thenReturn(Optional.empty());
+
+        // when
+        boolean result = memberService.validateDuplicateEmail(email);
+
+        // then
+        assertFalse(result);
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByEmail(email);
+        verify(memberRepository, never()).save(any(Member.class));
+    }
 }
