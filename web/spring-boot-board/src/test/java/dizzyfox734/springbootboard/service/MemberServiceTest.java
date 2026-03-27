@@ -13,6 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.Collections;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -95,5 +97,52 @@ public class MemberServiceTest {
 
         verify(passwordEncoder, times(1)).encode("newPassword");
         verify(memberRepository, times(1)).save(any(Member.class));
+    }
+
+    @Test
+    @DisplayName("validateDuplicateMember(): username이 존재하면 중복임을 반환한다")
+    void shouldReturnDuplicated_whenUsernameExists() {
+        // given
+        String username = "testuser";
+        Authority authority = Authority.builder()
+                .name("ROLE_USER")
+                .build();
+        Member existingUser = new Member(
+                null,
+                username,
+                "encodedPassword",
+                "홍길동",
+                "test@example.com",
+                true,
+                Collections.singleton(authority)
+        );
+
+        when(memberRepository.findOneWithAuthoritiesByUsername(username))
+                .thenReturn(Optional.of(existingUser));
+
+        // when
+        boolean result = memberService.validateDuplicateMember(username);
+
+        // then
+        assertTrue(result);
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername(username);
+        verify(memberRepository, never()).save(any(Member.class));
+    }
+
+    @Test
+    @DisplayName("validateDuplicateMember(): username이 존재하지 않으면 중복이 아님을 반환한다")
+    void shouldReturnNotDuplicated_whenUsernameDoesNotExist() {
+        // given
+        String username = "testuser";
+        when(memberRepository.findOneWithAuthoritiesByUsername(username))
+                .thenReturn(Optional.empty());
+
+        // when
+        boolean result = memberService.validateDuplicateMember(username);
+
+        // then
+        assertFalse(result);
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername(username);
+        verify(memberRepository, never()).save(any(Member.class));
     }
 }
