@@ -109,18 +109,17 @@ public class MemberServiceTest {
         Authority authority = Authority.builder()
                 .name("ROLE_USER")
                 .build();
-        Member existingUser = new Member(
-                null,
-                username,
-                "encodedPassword",
-                "홍길동",
-                "test@example.com",
-                true,
-                Collections.singleton(authority)
-        );
+        Member existingMember = Member.builder()
+                .username(username)
+                .password("encodedPassword")
+                .name("홍길동")
+                .email("test@example.com")
+                .authorities(Collections.singleton(authority))
+                .activated(true)
+                .build();
 
         when(memberRepository.findOneWithAuthoritiesByUsername(username))
-                .thenReturn(Optional.of(existingUser));
+                .thenReturn(Optional.of(existingMember));
 
         // when
         boolean result = memberService.validateDuplicateMember(username);
@@ -156,17 +155,16 @@ public class MemberServiceTest {
         Authority authority = Authority.builder()
                 .name("ROLE_USER")
                 .build();
-        Member existingUser = new Member(
-                null,
-                "testuser",
-                "encodedPassword",
-                "홍길동",
-                email,
-                true,
-                Collections.singleton(authority)
-        );
+        Member existingMember = Member.builder()
+                .username("testuser")
+                .password("encodedPassword")
+                .name("홍길동")
+                .email(email)
+                .authorities(Collections.singleton(authority))
+                .activated(true)
+                .build();
         when(memberRepository.findOneWithAuthoritiesByEmail(email))
-                .thenReturn(Optional.of(existingUser));
+                .thenReturn(Optional.of(existingMember));
 
         // when
         boolean result = memberService.validateDuplicateEmail(email);
@@ -202,15 +200,14 @@ public class MemberServiceTest {
         Authority authority = Authority.builder()
                 .name("ROLE_USER")
                 .build();
-        Member existingMember = new Member(
-                null,
-                username,
-                "encodedPassword",
-                "홍길동",
-                "test@example.com",
-                true,
-                Collections.singleton(authority)
-        );
+        Member existingMember = Member.builder()
+                .username(username)
+                .password("encodedPassword")
+                .name("홍길동")
+                .email("test@example.com")
+                .authorities(Collections.singleton(authority))
+                .activated(true)
+                .build();
 
         when(memberRepository.findOneWithAuthoritiesByUsername(username))
                 .thenReturn(Optional.of(existingMember));
@@ -241,5 +238,55 @@ public class MemberServiceTest {
         assertEquals("user not found", exception.getMessage());
 
         verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername(username);
+    }
+
+    @Test
+    @DisplayName("findUsername(): 이름과 이메일로 username을 찾는다")
+    void shouldFindUsername_whenNameAndEmailMatch() {
+        // given
+        String name = "홍길동";
+        String username = "testuser";
+        String email = "test@example.com";
+        Authority authority = Authority.builder()
+                .name("ROLE_USER")
+                .build();
+        Member existingMember = Member.builder()
+                .username(username)
+                .password("encodedPassword")
+                .name(name)
+                .email(email)
+                .authorities(Collections.singleton(authority))
+                .activated(true)
+                .build();
+
+        when(memberRepository.findByNameAndEmail(name, email)).thenReturn(Optional.of(existingMember));
+
+        // when
+        String result = memberService.findUsername(name, email);
+
+        // then
+        assertNotNull(result);
+        assertEquals(username, result);
+
+        verify(memberRepository, times(1)).findByNameAndEmail(name, email);
+    }
+
+    @Test
+    @DisplayName("findUsername(): 일치하는 회원이 없으면 예외가 발생한다")
+    void shouldThrowException_whenNoMemberMatchesNameAndEmail() {
+        // given
+        String name = "홍길동";
+        String email = "test@example.com";
+
+        when(memberRepository.findByNameAndEmail(name, email)).thenReturn(Optional.empty());
+
+        // when
+        DataNotFoundException exception = assertThrows(DataNotFoundException.class,
+                () -> memberService.findUsername(name, email));
+
+        // then
+        assertEquals("No user found with the provided name and email", exception.getMessage());
+
+        verify(memberRepository, times(1)).findByNameAndEmail(name, email);
     }
 }
