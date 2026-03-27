@@ -12,7 +12,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.expression.spel.ast.OpNE;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Collections;
@@ -37,6 +36,85 @@ public class MemberServiceTest {
 
     @InjectMocks
     private MemberService memberService;
+
+    @Test
+    @DisplayName("create(): 유효한 회원가입 정보가 주어지면 회원 객체를 생성하고 저장 요청 후 반환한다")
+    public void shouldCreateMember_whenSignupRequestIsValid() {
+        // given
+        SignupDto dto = new SignupDto();
+        dto.setUsername("testuser");
+        dto.setPassword1("password123");
+        dto.setPassword2("password123");
+        dto.setName("홍길동");
+        dto.setEmail("test@example.com");
+        dto.setEmailConfirm("123456");
+
+        when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
+        when(memberRepository.save(any(Member.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // when
+        Member result = memberService.create(dto);
+
+        // then
+        assertNotNull(result);
+        assertEquals("testuser", result.getUsername());
+        assertEquals("홍길동", result.getName());
+        assertEquals("test@example.com", result.getEmail());
+        assertEquals("encodedPassword", result.getPassword());
+        assertNotEquals("password123", result.getPassword());
+        assertTrue(result.isActivated());
+
+        assertNotNull(result.getAuthorities());
+        assertEquals(1, result.getAuthorities().size());
+        assertTrue(
+                result.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_USER".equals(authority.getName()))
+        );
+
+        verify(passwordEncoder, times(1)).encode("password123");
+        verify(memberRepository, times(1)).save(any(Member.class));
+
+        ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
+        verify(memberRepository).save(memberCaptor.capture());
+
+        Member capturedMember = memberCaptor.getValue();
+        assertEquals("testuser", capturedMember.getUsername());
+        assertEquals("홍길동", capturedMember.getName());
+        assertEquals("test@example.com", capturedMember.getEmail());
+        assertEquals("encodedPassword", capturedMember.getPassword());
+        assertTrue(capturedMember.isActivated());
+        assertTrue(
+                capturedMember.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_USER".equals(authority.getName()))
+        );
+    }
+
+    @Test
+    @DisplayName("create(): 저장 중 repository에서 예외가 발생하면 예외가 전파된다")
+    void shouldPropagateException_whenRepositorySaveFailsInCreate() {
+        // given
+        SignupDto dto = new SignupDto();
+        dto.setUsername("testuser");
+        dto.setPassword1("password123");
+        dto.setPassword2("password123");
+        dto.setName("홍길동");
+        dto.setEmail("test@example.com");
+        dto.setEmailConfirm("123456");
+
+        when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
+        when(memberRepository.save(any(Member.class)))
+                .thenThrow(new RuntimeException("DB save failed"));
+
+        // when & then
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> memberService.create(dto));
+
+        assertEquals("DB save failed", exception.getMessage());
+
+        verify(passwordEncoder, times(1)).encode("password123");
+        verify(memberRepository, times(1)).save(any(Member.class));
+    }
 
     @Test
     @DisplayName("modify(): 회원 객체와 새 비밀번호가 주어지면 비밀번호를 인코딩하고 저장한 뒤 반환한다")
