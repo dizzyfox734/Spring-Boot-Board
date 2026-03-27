@@ -4,6 +4,7 @@ import dizzyfox734.springbootboard.controller.dto.SignupDto;
 import dizzyfox734.springbootboard.domain.member.Authority;
 import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.member.MemberRepository;
+import dizzyfox734.springbootboard.exception.DataNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.expression.spel.ast.OpNE;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Collections;
@@ -190,5 +192,54 @@ public class MemberServiceTest {
         assertFalse(result);
         verify(memberRepository, times(1)).findOneWithAuthoritiesByEmail(email);
         verify(memberRepository, never()).save(any(Member.class));
+    }
+
+    @Test
+    @DisplayName("getMember(): username으로 회원을 조회한다")
+    void shouldGetMemberByUsername_whenUsernameExists() {
+        // given
+        String username = "testuser";
+        Authority authority = Authority.builder()
+                .name("ROLE_USER")
+                .build();
+        Member existingMember = new Member(
+                null,
+                username,
+                "encodedPassword",
+                "홍길동",
+                "test@example.com",
+                true,
+                Collections.singleton(authority)
+        );
+
+        when(memberRepository.findOneWithAuthoritiesByUsername(username))
+                .thenReturn(Optional.of(existingMember));
+
+        // when
+        Member result = memberService.getMember(username);
+
+        // then
+        assertNotNull(result);
+        assertSame(result, existingMember);
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername(username);
+    }
+
+    @Test
+    @DisplayName("getMember(): 존재하지 않는 username이면 DataNotFoundException이 발생한다")
+    void shouldThrowException_whenUsernameNotFound() {
+        // given
+        String username = "testuser";
+
+        when(memberRepository.findOneWithAuthoritiesByUsername(username))
+                .thenReturn(Optional.empty());
+
+        // when
+        DataNotFoundException exception = assertThrows(DataNotFoundException.class,
+                () -> memberService.getMember(username));
+
+        // then
+        assertEquals("user not found", exception.getMessage());
+
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername(username);
     }
 }
