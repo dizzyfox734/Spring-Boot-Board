@@ -5,6 +5,8 @@ import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.post.Post;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.domain.post.PostRepository;
+import dizzyfox734.springbootboard.exception.InvalidPostInputException;
+import dizzyfox734.springbootboard.exception.PostAccessDeniedException;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -44,6 +46,8 @@ public class PostService {
     }
 
     public void create(String title, String content, Member member) {
+        validatePostInput(title, content);
+
         Post post = new Post();
         post.setTitle(title);
         post.setContent(content);
@@ -51,14 +55,33 @@ public class PostService {
         this.postRepository.save(post);
     }
 
-    public void modify(Post post, String title, String content) {
+    public void modify(Integer postId, String title, String content, String username) {
+        validatePostInput(title, content);
+        Post post = findOne(postId);
+        validateAuthor(post, username);
+
         post.setTitle(title);
         post.setContent(content);
         this.postRepository.save(post);
     }
 
-    public void delete(Post post) {
+    public void delete(Integer postId, String username) {
+        Post post = findOne(postId);
+        validateAuthor(post, username);
+
         this.postRepository.delete(post);
+    }
+
+    /**
+     * 본인이 작성한 포스트인지 확인 후 포스트 반환
+     * @param postId 수정하려는 post의 id
+     * @param username 수정을 요청하는 사용자의 username
+     * @return post 수정하려는 포스트 반환
+     */
+    public Post getPostForModify(Integer postId, String username) {
+        Post post = findOne(postId);
+        validateAuthor(post, username);
+        return post;
     }
 
     /**
@@ -81,5 +104,20 @@ public class PostService {
                         cb.like(u2.get("username"), "%" + kw + "%"));
             }
         };
+    }
+
+    private void validateAuthor(Post post, String username) {
+        if (post.getAuthor() == null || !post.getAuthor().getUsername().equals(username)) {
+            throw new PostAccessDeniedException("작성자만 접근할 수 있습니다.");
+        }
+    }
+
+    private void validatePostInput(String title, String content) {
+        if (title == null || title.isBlank()) {
+            throw new InvalidPostInputException("제목은 필수항목입니다.");
+        }
+        if (content == null || content.isBlank()) {
+            throw new InvalidPostInputException("내용은 필수항목입니다.");
+        }
     }
 }

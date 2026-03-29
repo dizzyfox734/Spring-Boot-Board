@@ -9,13 +9,11 @@ import dizzyfox734.springbootboard.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 
@@ -69,10 +67,7 @@ public class PostController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/modify/{id}")
     public String modify(PostDto postDto, @PathVariable("id") Integer id, Principal principal) {
-        Post post = this.postService.findOne(id);
-        if(!post.getAuthor().getUsername().equals(principal.getName())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "수정권한이 없습니다.");
-        }
+        Post post = this.postService.getPostForModify(id, principal.getName());
         postDto.setTitle(post.getTitle());
         postDto.setContent(post.getContent());
         return "post/form";
@@ -88,11 +83,8 @@ public class PostController {
         if (bindingResult.hasErrors()) {
             return "post/form";
         }
-        Post post = this.postService.findOne(id);
-        if (!post.getAuthor().getUsername().equals(principal.getName())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "수정권한이 없습니다.");
-        }
-        this.postService.modify(post, postDto.getTitle(), postDto.getContent());
+
+        this.postService.modify(id, postDto.getTitle(), postDto.getContent(), principal.getName());
         return String.format("redirect:/post/detail/%s", id);
     }
 
@@ -102,11 +94,7 @@ public class PostController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/delete/{id}")
     public String delete(Principal principal, @PathVariable("id") Integer id) {
-        Post post = this.postService.findOne(id);
-        if (!post.getAuthor().getUsername().equals(principal.getName())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "삭제권한이 없습니다.");
-        }
-        this.postService.delete(post);
+        this.postService.delete(id, principal.getName());
 
         return "redirect:/";
     }
