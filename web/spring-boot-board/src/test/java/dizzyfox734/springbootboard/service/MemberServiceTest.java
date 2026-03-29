@@ -2,9 +2,10 @@ package dizzyfox734.springbootboard.service;
 
 import dizzyfox734.springbootboard.controller.dto.SignupDto;
 import dizzyfox734.springbootboard.domain.member.Authority;
+import dizzyfox734.springbootboard.domain.member.AuthorityRepository;
 import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.member.MemberRepository;
-import dizzyfox734.springbootboard.exception.DataNotFoundException;
+import dizzyfox734.springbootboard.exception.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,11 +35,14 @@ public class MemberServiceTest {
     @Mock
     private MailService mailService;
 
+    @Mock
+    private AuthorityRepository authorityRepository;
+
     @InjectMocks
     private MemberService memberService;
 
     @Test
-    @DisplayName("create(): 유효한 회원가입 정보가 주어지면 회원 객체를 생성하고 저장 요청 후 반환한다")
+    @DisplayName("create(): 유효한 회원가입 정보가 주어지면 회원을 생성하고 저장한다")
     public void shouldCreateMember_whenSignupRequestIsValid() {
         // given
         SignupDto dto = new SignupDto();
@@ -49,7 +53,21 @@ public class MemberServiceTest {
         dto.setEmail("test@example.com");
         dto.setEmailConfirm("123456");
 
-        when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
+        Authority roleUser = Authority.builder()
+                .name("ROLE_USER")
+                .build();
+
+        when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
+                .thenReturn(Optional.empty());
+        when(memberRepository.findOneWithAuthoritiesByEmail("test@example.com"))
+                .thenReturn(Optional.empty());
+        when(mailService.verifyMail("test@example.com", "123456"))
+                .thenReturn(true);
+        when(authorityRepository.findById("ROLE_USER"))
+                .thenReturn(Optional.of(roleUser));
+        when(passwordEncoder.encode("password123"))
+                .thenReturn("encodedPassword");
+
         when(memberRepository.save(any(Member.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -67,13 +85,20 @@ public class MemberServiceTest {
 
         assertNotNull(result.getAuthorities());
         assertEquals(1, result.getAuthorities().size());
-        assertTrue(
-                result.getAuthorities().stream()
-                        .anyMatch(authority -> "ROLE_USER".equals(authority.getName()))
-        );
+        assertTrue(result.getAuthorities().contains(roleUser));
 
-        verify(passwordEncoder, times(1)).encode("password123");
-        verify(memberRepository, times(1)).save(any(Member.class));
+        verify(memberRepository, times(1))
+                .findOneWithAuthoritiesByUsername("testuser");
+        verify(memberRepository, times(1))
+                .findOneWithAuthoritiesByEmail("test@example.com");
+        verify(mailService, times(1))
+                .verifyMail("test@example.com", "123456");
+        verify(authorityRepository, times(1))
+                .findById("ROLE_USER");
+        verify(passwordEncoder, times(1))
+                .encode("password123");
+        verify(memberRepository, times(1))
+                .save(any(Member.class));
 
         ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
         verify(memberRepository).save(memberCaptor.capture());
@@ -84,10 +109,181 @@ public class MemberServiceTest {
         assertEquals("test@example.com", capturedMember.getEmail());
         assertEquals("encodedPassword", capturedMember.getPassword());
         assertTrue(capturedMember.isActivated());
-        assertTrue(
-                capturedMember.getAuthorities().stream()
-                        .anyMatch(authority -> "ROLE_USER".equals(authority.getName()))
-        );
+        assertTrue(capturedMember.getAuthorities().contains(roleUser));
+    }
+
+    @Test
+    @DisplayName("create(): 비밀번호 확인이 일치하지 않으면 PasswordMismatchException이 발생한다")
+    void shouldThrowPasswordMismatchException_whenPasswordsDoNotMatch() {
+        // given
+        SignupDto dto = new SignupDto();
+        dto.setUsername("testuser");
+        dto.setPassword1("password123");
+        dto.setPassword2("wrongpassword123");
+        dto.setName("홍길동");
+        dto.setEmail("test@example.com");
+        dto.setEmailConfirm("123456");
+
+        // when
+        PasswordMismatchException exception = assertThrows(PasswordMismatchException.class,
+                () -> memberService.create(dto));
+
+        // then
+        assertEquals("패스워드가 일치하지 않습니다.", exception.getMessage());
+
+        verify(memberRepository, never()).findOneWithAuthoritiesByUsername(any());
+        verify(memberRepository, never()).findOneWithAuthoritiesByEmail(any());
+        verify(mailService, never()).verifyMail(any(), any());
+        verify(authorityRepository, never()).findById(any());
+        verify(passwordEncoder, never()).encode(any());
+        verify(memberRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create(): username이 중복되면 DuplicateUsernameException이 발생한다")
+    void shouldThrowDuplicateUsernameException_whenUsernameAlreadyExists() {
+        // given
+        SignupDto dto = new SignupDto();
+        dto.setUsername("testuser");
+        dto.setPassword1("password123");
+        dto.setPassword2("password123");
+        dto.setName("홍길동");
+        dto.setEmail("test@example.com");
+        dto.setEmailConfirm("123456");
+
+        Member existingMember = Member.builder()
+                .username("testuser")
+                .password("encodedPassword")
+                .name("기존회원")
+                .email("exist@example.com")
+                .activated(true)
+                .build();
+
+        when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
+                .thenReturn(Optional.of(existingMember));
+
+        // when
+        DuplicateUsernameException exception = assertThrows(DuplicateUsernameException.class,
+                () -> memberService.create(dto));
+
+        // then
+        assertEquals("이미 등록된 아이디입니다.", exception.getMessage());
+
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername("testuser");
+        verify(memberRepository, never()).findOneWithAuthoritiesByEmail(any());
+        verify(mailService, never()).verifyMail(any(), any());
+        verify(authorityRepository, never()).findById(any());
+        verify(passwordEncoder, never()).encode(any());
+        verify(memberRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create(): email이 중복되면 DuplicateEmailException이 발생한다")
+    void shouldThrowDuplicateEmailException_whenEmailAlreadyExists() {
+        // given
+        SignupDto dto = new SignupDto();
+        dto.setUsername("testuser");
+        dto.setPassword1("password123");
+        dto.setPassword2("password123");
+        dto.setName("홍길동");
+        dto.setEmail("test@example.com");
+        dto.setEmailConfirm("123456");
+
+        Member existingMember = Member.builder()
+                .username("existingMember")
+                .password("encodedPassword")
+                .name("기존회원")
+                .email("test@example.com")
+                .activated(true)
+                .build();
+
+        when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
+                .thenReturn(Optional.empty());
+        when(memberRepository.findOneWithAuthoritiesByEmail("test@example.com"))
+                .thenReturn(Optional.of(existingMember));
+
+        // when
+        DuplicateEmailException exception = assertThrows(DuplicateEmailException.class,
+                () -> memberService.create(dto));
+
+        // then
+        assertEquals("이미 등록된 이메일입니다.", exception.getMessage());
+
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername("testuser");
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByEmail("test@example.com");
+        verify(mailService, never()).verifyMail(any(), any());
+        verify(authorityRepository, never()).findById(any());
+        verify(passwordEncoder, never()).encode(any());
+        verify(memberRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create(): 이메일 인증에 실패하면 EmailVerificationException이 발생한다")
+    void shouldThrowEmailVerificationException_whenEmailVerificationFails() {
+        // given
+        SignupDto dto = new SignupDto();
+        dto.setUsername("testuser");
+        dto.setPassword1("password123");
+        dto.setPassword2("password123");
+        dto.setName("홍길동");
+        dto.setEmail("test@example.com");
+        dto.setEmailConfirm("123456");
+
+        when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
+                .thenReturn(Optional.empty());
+        when(memberRepository.findOneWithAuthoritiesByEmail("test@example.com"))
+                .thenReturn(Optional.empty());
+        when(mailService.verifyMail("test@example.com", "123456"))
+                .thenReturn(false);
+
+        // when
+        EmailVerificationException exception = assertThrows(EmailVerificationException.class,
+                () -> memberService.create(dto));
+
+        // then
+        assertEquals("인증코드가 일치하지 않습니다.", exception.getMessage());
+
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername("testuser");
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByEmail("test@example.com");
+        verify(mailService, times(1)).verifyMail("test@example.com", "123456");
+        verify(authorityRepository, never()).findById(any());
+        verify(passwordEncoder, never()).encode(any());
+        verify(memberRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create(): 기본 권한 조회에 실패하면 예외가 발생한다")
+    void shouldThrowException_whenDefaultAuthorityIsMissing() {
+        // given
+        SignupDto dto = new SignupDto();
+        dto.setUsername("testuser");
+        dto.setPassword1("password123");
+        dto.setPassword2("password123");
+        dto.setName("홍길동");
+        dto.setEmail("test@example.com");
+        dto.setEmailConfirm("123456");
+
+        when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
+                .thenReturn(Optional.empty());
+        when(memberRepository.findOneWithAuthoritiesByEmail("test@example.com"))
+                .thenReturn(Optional.empty());
+        when(mailService.verifyMail("test@example.com", "123456"))
+                .thenReturn(true);
+        when(authorityRepository.findById("ROLE_USER"))
+                .thenReturn(Optional.empty());
+
+        // when
+        AuthorityNotFoundException exception = assertThrows(AuthorityNotFoundException.class,
+                () -> memberService.create(dto));
+        // then
+        assertEquals("ROLE_USER 권한이 존재하지 않습니다.", exception.getMessage());
+
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername("testuser");
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByEmail("test@example.com");
+        verify(mailService, times(1)).verifyMail("test@example.com", "123456");
+        verify(authorityRepository, times(1)).findById("ROLE_USER");
+        verify(passwordEncoder, never()).encode(any());
+        verify(memberRepository, never()).save(any());
     }
 
     @Test
@@ -102,6 +298,18 @@ public class MemberServiceTest {
         dto.setEmail("test@example.com");
         dto.setEmailConfirm("123456");
 
+        Authority roleUser = Authority.builder()
+                .name("ROLE_USER")
+                .build();
+
+        when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
+                .thenReturn(Optional.empty());
+        when(memberRepository.findOneWithAuthoritiesByEmail("test@example.com"))
+                .thenReturn(Optional.empty());
+        when(mailService.verifyMail("test@example.com", "123456"))
+                .thenReturn(true);
+        when(authorityRepository.findById("ROLE_USER"))
+                .thenReturn(Optional.of(roleUser));
         when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
         when(memberRepository.save(any(Member.class)))
                 .thenThrow(new RuntimeException("DB save failed"));
@@ -111,7 +319,10 @@ public class MemberServiceTest {
                 () -> memberService.create(dto));
 
         assertEquals("DB save failed", exception.getMessage());
-
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername("testuser");
+        verify(memberRepository, times(1)).findOneWithAuthoritiesByEmail("test@example.com");
+        verify(mailService, times(1)).verifyMail("test@example.com", "123456");
+        verify(authorityRepository, times(1)).findById("ROLE_USER");
         verify(passwordEncoder, times(1)).encode("password123");
         verify(memberRepository, times(1)).save(any(Member.class));
     }
@@ -177,97 +388,6 @@ public class MemberServiceTest {
 
         verify(passwordEncoder, times(1)).encode("newPassword");
         verify(memberRepository, times(1)).save(any(Member.class));
-    }
-
-    @Test
-    @DisplayName("validateDuplicateMember(): username이 존재하면 중복임을 반환한다")
-    void shouldReturnDuplicated_whenUsernameExists() {
-        // given
-        String username = "testuser";
-        Authority authority = Authority.builder()
-                .name("ROLE_USER")
-                .build();
-        Member existingMember = Member.builder()
-                .username(username)
-                .password("encodedPassword")
-                .name("홍길동")
-                .email("test@example.com")
-                .authorities(Collections.singleton(authority))
-                .activated(true)
-                .build();
-
-        when(memberRepository.findOneWithAuthoritiesByUsername(username))
-                .thenReturn(Optional.of(existingMember));
-
-        // when
-        boolean result = memberService.validateDuplicateMember(username);
-
-        // then
-        assertTrue(result);
-        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername(username);
-        verify(memberRepository, never()).save(any(Member.class));
-    }
-
-    @Test
-    @DisplayName("validateDuplicateMember(): username이 존재하지 않으면 중복이 아님을 반환한다")
-    void shouldReturnNotDuplicated_whenUsernameDoesNotExist() {
-        // given
-        String username = "testuser";
-        when(memberRepository.findOneWithAuthoritiesByUsername(username))
-                .thenReturn(Optional.empty());
-
-        // when
-        boolean result = memberService.validateDuplicateMember(username);
-
-        // then
-        assertFalse(result);
-        verify(memberRepository, times(1)).findOneWithAuthoritiesByUsername(username);
-        verify(memberRepository, never()).save(any(Member.class));
-    }
-
-    @Test
-    @DisplayName("validateDuplicateEmail(): email이 존재하면 중복임을 반환한다")
-    void shouldReturnDuplicated_whenEmailExists() {
-        // given
-        String email = "test@example.com";
-        Authority authority = Authority.builder()
-                .name("ROLE_USER")
-                .build();
-        Member existingMember = Member.builder()
-                .username("testuser")
-                .password("encodedPassword")
-                .name("홍길동")
-                .email(email)
-                .authorities(Collections.singleton(authority))
-                .activated(true)
-                .build();
-        when(memberRepository.findOneWithAuthoritiesByEmail(email))
-                .thenReturn(Optional.of(existingMember));
-
-        // when
-        boolean result = memberService.validateDuplicateEmail(email);
-
-        // then
-        assertTrue(result);
-        verify(memberRepository, times(1)).findOneWithAuthoritiesByEmail(email);
-        verify(memberRepository, never()).save(any(Member.class));
-    }
-
-    @Test
-    @DisplayName("validateDuplicateEmail(): email이 존재하지 않으면 중복이 아님을 반환한다")
-    void shouldReturnNotDuplicated_whenEmailDoesNotExist() {
-        // given
-        String email = "test@example.com";
-        when(memberRepository.findOneWithAuthoritiesByEmail(email))
-                .thenReturn(Optional.empty());
-
-        // when
-        boolean result = memberService.validateDuplicateEmail(email);
-
-        // then
-        assertFalse(result);
-        verify(memberRepository, times(1)).findOneWithAuthoritiesByEmail(email);
-        verify(memberRepository, never()).save(any(Member.class));
     }
 
     @Test
