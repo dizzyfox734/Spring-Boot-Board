@@ -2,9 +2,15 @@ package dizzyfox734.springbootboard.service;
 
 import dizzyfox734.springbootboard.controller.dto.SignupDto;
 import dizzyfox734.springbootboard.domain.member.Authority;
+import dizzyfox734.springbootboard.domain.member.AuthorityRepository;
 import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.member.MemberRepository;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
+import dizzyfox734.springbootboard.exception.DuplicateUsernameException;
+import dizzyfox734.springbootboard.exception.EmailVerificationException;
+import dizzyfox734.springbootboard.exception.PasswordMismatchException;
+import dizzyfox734.springbootboard.exception.DuplicateEmailException;
+import dizzyfox734.springbootboard.exception.AuthorityNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +28,7 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
+    private final AuthorityRepository authorityRepository;
 
     /**
      * 회원 생성
@@ -31,10 +38,10 @@ public class MemberService {
      */
     @Transactional
     public Member create(SignupDto signupDto) {
+        validateSignup(signupDto);
 
-        Authority authority = Authority.builder()
-                .name("ROLE_USER")
-                .build();
+        Authority authority = authorityRepository.findById("ROLE_USER")
+                .orElseThrow(() -> new AuthorityNotFoundException("ROLE_USER 권한이 존재하지 않습니다."));
 
         Member member = Member.builder()
                 .username(signupDto.getUsername())
@@ -64,26 +71,6 @@ public class MemberService {
         this.memberRepository.save(member);
 
         return member;
-    }
-
-    /**
-     * 아이디 중복 검사
-     *
-     * @param username 검증할 아이디
-     * @return 아이디가 중복되면 true, 아니면 false
-     */
-    public boolean validateDuplicateMember(String username) {
-        return memberRepository.findOneWithAuthoritiesByUsername(username).isPresent();
-    }
-
-    /**
-     * 이메일 중복 검사
-     *
-     * @param email 검증할 이메일
-     * @return 이메일이 중복되면 true, 아니면 false
-     */
-    public boolean validateDuplicateEmail(String email) {
-        return memberRepository.findOneWithAuthoritiesByEmail(email).isPresent();
     }
 
     /**
@@ -176,4 +163,39 @@ public class MemberService {
         return password.toString();
     }
 
+    /**
+     * 회원가입 검증
+     *
+     * @param signupDto
+     */
+    private void validateSignup(SignupDto signupDto) {
+        validatePasswordMatch(signupDto);
+        validateUsernameNotDuplicated(signupDto.getUsername());
+        validateEmailNotDuplicated(signupDto.getEmail());
+        validateEmailVerified(signupDto.getEmail(), signupDto.getEmailConfirm());
+    }
+
+    private void validatePasswordMatch(SignupDto signupDto) {
+        if (!signupDto.getPassword1().equals(signupDto.getPassword2())) {
+            throw new PasswordMismatchException("패스워드가 일치하지 않습니다.");
+        }
+    }
+
+    private void validateUsernameNotDuplicated(String username) {
+        if (memberRepository.findOneWithAuthoritiesByUsername(username).isPresent()) {
+            throw new DuplicateUsernameException("이미 등록된 아이디입니다.");
+        }
+    }
+
+    private void validateEmailNotDuplicated(String email) {
+        if (memberRepository.findOneWithAuthoritiesByEmail(email).isPresent()) {
+            throw new DuplicateEmailException("이미 등록된 이메일입니다.");
+        }
+    }
+
+    private void validateEmailVerified(String email, String emailConfirm) {
+        if (!mailService.verifyMail(email, emailConfirm)) {
+            throw new EmailVerificationException("인증코드가 일치하지 않습니다.");
+        }
+    }
 }

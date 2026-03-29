@@ -9,8 +9,6 @@ import java.util.Set;
 @Getter
 @Setter
 @Builder
-@AllArgsConstructor
-@NoArgsConstructor
 public class Member extends BaseTimeEntity {
 
     @Id
