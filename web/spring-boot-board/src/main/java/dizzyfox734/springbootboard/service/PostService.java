@@ -3,10 +3,8 @@ package dizzyfox734.springbootboard.service;
 import dizzyfox734.springbootboard.domain.comment.Comment;
 import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.post.Post;
-import dizzyfox734.springbootboard.exception.DataNotFoundException;
+import dizzyfox734.springbootboard.exception.*;
 import dizzyfox734.springbootboard.domain.post.PostRepository;
-import dizzyfox734.springbootboard.exception.InvalidPostInputException;
-import dizzyfox734.springbootboard.exception.PostAccessDeniedException;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,6 +33,11 @@ public class PostService {
         return this.postRepository.findAll(spec, pageable);
     }
 
+    /**
+     *
+     * @param id
+     * @return
+     */
     public Post findOne(Integer id) {
         Optional<Post> post = this.postRepository.findById(id);
 
@@ -45,6 +48,12 @@ public class PostService {
         }
     }
 
+    /**
+     * 포스트 생성
+     * @param title
+     * @param content
+     * @param member
+     */
     public void create(String title, String content, Member member) {
         validatePostInput(title, content);
 
@@ -55,6 +64,13 @@ public class PostService {
         this.postRepository.save(post);
     }
 
+    /**
+     * 포스트 수정
+     * @param postId
+     * @param title
+     * @param content
+     * @param username
+     */
     public void modify(Integer postId, String title, String content, String username) {
         validatePostInput(title, content);
         Post post = findOne(postId);
@@ -65,6 +81,11 @@ public class PostService {
         this.postRepository.save(post);
     }
 
+    /**
+     * 포스트 삭제
+     * @param postId
+     * @param username
+     */
     public void delete(Integer postId, String username) {
         Post post = findOne(postId);
         validateAuthor(post, username);
@@ -107,7 +128,15 @@ public class PostService {
     }
 
     private void validateAuthor(Post post, String username) {
-        if (post.getAuthor() == null || !post.getAuthor().getUsername().equals(username)) {
+        if (post.getAuthor() == null) {
+            throw new IllegalStateException("Post has no author");
+        }
+
+        if (username == null) {
+            throw new InvalidRequestException("Username is null");
+        }
+
+        if (!post.getAuthor().getUsername().equals(username)) {
             throw new PostAccessDeniedException("작성자만 접근할 수 있습니다.");
         }
     }
