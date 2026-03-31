@@ -6,7 +6,7 @@ import dizzyfox734.springbootboard.domain.post.PostRepository;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.exception.InvalidPostInputException;
 import dizzyfox734.springbootboard.exception.InvalidRequestException;
-import dizzyfox734.springbootboard.exception.PostAccessDeniedException;
+import dizzyfox734.springbootboard.exception.AccessDeniedException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -226,7 +226,7 @@ public class PostServiceTest {
         when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
 
         // when
-        PostAccessDeniedException exception = assertThrows(PostAccessDeniedException.class,
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class,
                 () -> postService.modify(1, "newTitle", "newContent", "wronguser"));
 
         // then
@@ -373,7 +373,7 @@ public class PostServiceTest {
         when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
 
         // when
-        PostAccessDeniedException exception = assertThrows(PostAccessDeniedException.class,
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class,
                 () -> postService.delete(1, "wronguser"));
 
         // then
@@ -473,7 +473,7 @@ public class PostServiceTest {
         when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
 
         // when
-        PostAccessDeniedException exception = assertThrows(PostAccessDeniedException.class,
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class,
                 () -> postService.getPostForModify(1, "wronguser"));
 
         // then

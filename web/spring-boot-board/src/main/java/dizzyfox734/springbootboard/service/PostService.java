@@ -137,7 +137,7 @@ public class PostService {
         }
 
         if (!post.getAuthor().getUsername().equals(username)) {
-            throw new PostAccessDeniedException("작성자만 접근할 수 있습니다.");
+            throw new AccessDeniedException("작성자만 접근할 수 있습니다.");
         }
     }
 
