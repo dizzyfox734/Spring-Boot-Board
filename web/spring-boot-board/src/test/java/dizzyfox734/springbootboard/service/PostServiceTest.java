@@ -4,7 +4,7 @@ import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.post.Post;
 import dizzyfox734.springbootboard.domain.post.PostRepository;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
-import dizzyfox734.springbootboard.exception.InvalidPostInputException;
+import dizzyfox734.springbootboard.exception.InvalidInputException;
 import dizzyfox734.springbootboard.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.exception.AccessDeniedException;
 import org.junit.jupiter.api.DisplayName;
@@ -105,10 +105,10 @@ public class PostServiceTest {
     }
 
     @Test
-    @DisplayName("create(): 제목이 null이면 InvalidPostInputException이 발생한다")
-    void shouldThrowInvalidPostInputException_whenTitleIsNullOnCreate() {
+    @DisplayName("create(): 제목이 null이면 InvalidInputException이 발생한다")
+    void shouldThrowInvalidInputException_whenTitleIsNullOnCreate() {
         // when
-        InvalidPostInputException exception = assertThrows(InvalidPostInputException.class,
+        InvalidInputException exception = assertThrows(InvalidInputException.class,
                 () -> postService.create(null, "test content", createMember("testuser")));
 
         // then
@@ -118,10 +118,10 @@ public class PostServiceTest {
     }
 
     @Test
-    @DisplayName("create(): 제목이 공백이면 InvalidPostInputException이 발생한다")
-    void shouldThrowInvalidPostInputException_whenTitleIsBlankOnCreate() {
+    @DisplayName("create(): 제목이 공백이면 InvalidInputException이 발생한다")
+    void shouldThrowInvalidInputException_whenTitleIsBlankOnCreate() {
         // when
-        InvalidPostInputException exception = assertThrows(InvalidPostInputException.class,
+        InvalidInputException exception = assertThrows(InvalidInputException.class,
                 () -> postService.create("", "test content", createMember("testuser")));
 
         // then
@@ -131,10 +131,10 @@ public class PostServiceTest {
     }
 
     @Test
-    @DisplayName("create(): 내용이 null이면 InvalidPostInputException이 발생한다")
-    void shouldThrowInvalidPostInputException_whenContentIsNullOnCreate() {
+    @DisplayName("create(): 내용이 null이면 InvalidInputException이 발생한다")
+    void shouldThrowInvalidInputException_whenContentIsNullOnCreate() {
         // when
-        InvalidPostInputException exception = assertThrows(InvalidPostInputException.class,
+        InvalidInputException exception = assertThrows(InvalidInputException.class,
                 () -> postService.create("test title", null, createMember("testuser")));
 
         // then
@@ -144,10 +144,10 @@ public class PostServiceTest {
     }
 
     @Test
-    @DisplayName("create(): 내용이 공백이면 InvalidPostInputException이 발생한다")
-    void shouldThrowInvalidPostInputException_whenContentIsBlankOnCreate() {
+    @DisplayName("create(): 내용이 공백이면 InvalidInputException이 발생한다")
+    void shouldThrowInvalidInputException_whenContentIsBlankOnCreate() {
         // when
-        InvalidPostInputException exception = assertThrows(InvalidPostInputException.class,
+        InvalidInputException exception = assertThrows(InvalidInputException.class,
                 () -> postService.create("test title", "", createMember("testuser")));
 
         // then
@@ -237,10 +237,10 @@ public class PostServiceTest {
     }
 
     @Test
-    @DisplayName("modify(): 제목이 null이면 InvalidPostInputException이 발생한다")
-    void shouldThrowInvalidPostInputException_whenTitleIsNullOnModify() {
+    @DisplayName("modify(): 제목이 null이면 InvalidInputException이 발생한다")
+    void shouldThrowInvalidInputException_whenTitleIsNullOnModify() {
         // when
-        InvalidPostInputException exception = assertThrows(InvalidPostInputException.class,
+        InvalidInputException exception = assertThrows(InvalidInputException.class,
                 () -> postService.modify(1, null, "newContent", "testuser"));
 
         // then
@@ -251,10 +251,10 @@ public class PostServiceTest {
     }
 
     @Test
-    @DisplayName("modify(): 제목이 공백이면 InvalidPostInputException이 발생한다")
-    void shouldThrowInvalidPostInputException_whenTitleIsBlankOnModify() {
+    @DisplayName("modify(): 제목이 공백이면 InvalidInputException이 발생한다")
+    void shouldThrowInvalidInputException_whenTitleIsBlankOnModify() {
         // when
-        InvalidPostInputException exception = assertThrows(InvalidPostInputException.class,
+        InvalidInputException exception = assertThrows(InvalidInputException.class,
                 () -> postService.modify(1, "", "newContent", "testuser"));
 
         // then
@@ -265,10 +265,10 @@ public class PostServiceTest {
     }
 
     @Test
-    @DisplayName("modify(): 내용이 null이면 InvalidPostInputException이 발생한다")
-    void shouldThrowInvalidPostInputException_whenContentIsNullOnModify() {
+    @DisplayName("modify(): 내용이 null이면 InvalidInputException이 발생한다")
+    void shouldThrowInvalidInputException_whenContentIsNullOnModify() {
         // when
-        InvalidPostInputException exception = assertThrows(InvalidPostInputException.class,
+        InvalidInputException exception = assertThrows(InvalidInputException.class,
                 () -> postService.modify(1, "newTitle", null, "testuser"));
 
         // then
@@ -279,10 +279,10 @@ public class PostServiceTest {
     }
 
     @Test
-    @DisplayName("modify(): 내용이 공백이면 InvalidPostInputException이 발생한다")
-    void shouldThrowInvalidPostInputException_whenContentIsBlankOnModify() {
+    @DisplayName("modify(): 내용이 공백이면 InvalidInputException이 발생한다")
+    void shouldThrowInvalidInputException_whenContentIsBlankOnModify() {
         // when
-        InvalidPostInputException exception = assertThrows(InvalidPostInputException.class,
+        InvalidInputException exception = assertThrows(InvalidInputException.class,
                 () -> postService.modify(1, "newTitle", "", "testuser"));
 
         // then
@@ -323,6 +323,23 @@ public class PostServiceTest {
         // then
         verify(postRepository, times(1)).findById(1);
         verify(postRepository, times(1)).delete(existingPost);
+    }
+
+    @Test
+    @DisplayName("delete(): 존재하지 않는 게시글이면 DataNotFoundException이 발생한다")
+    void shouldThrowDataNotFoundException_whenPostNotFoundOnDelete() {
+        // given
+        when(postRepository.findById(any())).thenReturn(Optional.empty());
+
+        // when
+        DataNotFoundException exception = assertThrows(DataNotFoundException.class,
+                () -> postService.delete(1, "testuser"));
+
+        // then
+        assertEquals("Post not found", exception.getMessage());
+
+        verify(postRepository, times(1)).findById(1);
+        verify(postRepository, never()).delete(any(Post.class));
     }
 
     @Test
@@ -384,6 +401,27 @@ public class PostServiceTest {
     }
 
     @Test
+    @DisplayName("getPostForModify(): 작성자 본인이면 게시글을 반환한다")
+    void shouldReturnPost_whenGetPostForModifyRequestedByAuthor() {
+        // given
+        Post existingPost = new Post();
+        existingPost.setId(1);
+        existingPost.setTitle("test title");
+        existingPost.setContent("test content");
+        existingPost.setAuthor(createMember("testuser"));
+
+        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
+
+        // when
+        Post result = postService.getPostForModify(1, "testuser");
+
+        // then
+        assertSame(existingPost, result);
+
+        verify(postRepository, times(1)).findById(1);
+    }
+
+    @Test
     @DisplayName("getPostForModify(): 게시글의 작성자가 null이면 IllegalStateException이 발생한다")
     void shouldThrowIllegalStateException_whenPostAuthorIsNullOnGetPostForModify() {
         // given
@@ -420,44 +458,6 @@ public class PostServiceTest {
 
         verify(postRepository, times(1)).findById(1);
         verify(postRepository, never()).delete(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("delete(): 존재하지 않는 게시글이면 DataNotFoundException이 발생한다")
-    void shouldThrowDataNotFoundException_whenPostNotFoundOnDelete() {
-        // given
-        when(postRepository.findById(any())).thenReturn(Optional.empty());
-
-        // when
-        DataNotFoundException exception = assertThrows(DataNotFoundException.class,
-                () -> postService.delete(1, "testuser"));
-
-        // then
-        assertEquals("Post not found", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).delete(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("getPostForModify(): 작성자 본인이면 게시글을 반환한다")
-    void shouldReturnPost_whenGetPostForModifyRequestedByAuthor() {
-        // given
-        Post existingPost = new Post();
-        existingPost.setId(1);
-        existingPost.setTitle("test title");
-        existingPost.setContent("test content");
-        existingPost.setAuthor(createMember("testuser"));
-
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
-
-        // when
-        Post result = postService.getPostForModify(1, "testuser");
-
-        // then
-        assertSame(existingPost, result);
-
-        verify(postRepository, times(1)).findById(1);
     }
 
     @Test

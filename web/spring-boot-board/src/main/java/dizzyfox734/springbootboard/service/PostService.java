@@ -143,10 +143,10 @@ public class PostService {
 
     private void validatePostInput(String title, String content) {
         if (title == null || title.isBlank()) {
-            throw new InvalidPostInputException("제목은 필수항목입니다.");
+            throw new InvalidInputException("제목은 필수항목입니다.");
         }
         if (content == null || content.isBlank()) {
-            throw new InvalidPostInputException("내용은 필수항목입니다.");
+            throw new InvalidInputException("내용은 필수항목입니다.");
         }
     }
 }

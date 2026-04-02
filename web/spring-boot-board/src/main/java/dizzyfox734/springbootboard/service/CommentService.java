@@ -5,6 +5,7 @@ import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.post.Post;
 import dizzyfox734.springbootboard.domain.comment.CommentRepository;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
+import dizzyfox734.springbootboard.exception.InvalidInputException;
 import dizzyfox734.springbootboard.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.exception.AccessDeniedException;
 import lombok.RequiredArgsConstructor;
@@ -20,28 +21,10 @@ public class CommentService {
     private final MemberService memberService;
     private final CommentRepository commentRepository;
 
-    public Comment create(Post post, String content, Member author) {
-        Comment comment = new Comment();
-        comment.setContent(content);
-        comment.setPost(post);
-        comment.setAuthor(author);
-        this.commentRepository.save(comment);
-
-        return comment;
-    }
-
     public Comment create(Integer postId, String content, String username) {
-        if (postId == null) {
-            throw new InvalidRequestException("Post id is null");
-        }
-
-        if (username == null) {
-            throw new InvalidRequestException("Username is null");
-        }
-
-        if (content == null || content.trim().isEmpty()) {
-            throw new InvalidRequestException("Comment content is blank");
-        }
+        validatePostId(postId);
+        validateUsername(username);
+        validateCommentInput(content);
 
         Post post = this.postService.findOne(postId);
         Member author = this.memberService.getMember(username);
@@ -66,12 +49,19 @@ public class CommentService {
     }
 
     public Comment getCommentForModify(Integer commentId, String username) {
+        validateCommentId(commentId);
+        validateUsername(username);
+
         Comment comment = findOne(commentId);
         validateAuthor(comment, username);
         return comment;
     }
 
     public Comment modify(Integer commentId, String content, String username) {
+        validateCommentId(commentId);
+        validateUsername(username);
+        validateCommentInput(content);
+
         Comment comment = findOne(commentId);
         validateAuthor(comment, username);
 
@@ -81,6 +71,9 @@ public class CommentService {
     }
 
     public Comment delete(Integer commentId, String username) {
+        validateCommentId(commentId);
+        validateUsername(username);
+
         Comment comment = findOne(commentId);
         validateAuthor(comment, username);
 
@@ -93,12 +86,32 @@ public class CommentService {
             throw new IllegalStateException("Comment has no author");
         }
 
+        if (!comment.getAuthor().getUsername().equals(username)) {
+            throw new AccessDeniedException("작성자만 접근할 수 있습니다.");
+        }
+    }
+
+    private void validatePostId(Integer postId) {
+        if (postId == null) {
+            throw new InvalidRequestException("Post id is null");
+        }
+    }
+
+    private void validateCommentId(Integer commentId) {
+        if (commentId == null) {
+            throw new InvalidRequestException("Comment id is null");
+        }
+    }
+
+    private void validateUsername(String username) {
         if (username == null) {
             throw new InvalidRequestException("Username is null");
         }
+    }
 
-        if (!comment.getAuthor().getUsername().equals(username)) {
-            throw new AccessDeniedException("작성자만 접근할 수 있습니다.");
+    private void validateCommentInput(String content) {
+        if (content == null || content.isBlank()) {
+            throw new InvalidInputException("내용은 필수항목입니다.");
         }
     }
 }
