@@ -1,33 +1,40 @@
 package dizzyfox734.springbootboard.service;
 
 import dizzyfox734.springbootboard.controller.dto.SignupDto;
+import dizzyfox734.springbootboard.domain.mail.MailCertificationService;
 import dizzyfox734.springbootboard.domain.member.Authority;
 import dizzyfox734.springbootboard.domain.member.AuthorityRepository;
 import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.domain.member.MemberRepository;
+import dizzyfox734.springbootboard.exception.AuthorityNotFoundException;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
+import dizzyfox734.springbootboard.exception.DuplicateEmailException;
 import dizzyfox734.springbootboard.exception.DuplicateUsernameException;
 import dizzyfox734.springbootboard.exception.EmailVerificationException;
+import dizzyfox734.springbootboard.exception.ExpiredMailCertificationCodeException;
+import dizzyfox734.springbootboard.exception.InvalidMailCertificationCodeException;
+import dizzyfox734.springbootboard.exception.MailMessageBuildException;
+import dizzyfox734.springbootboard.exception.MailSendException;
 import dizzyfox734.springbootboard.exception.PasswordMismatchException;
-import dizzyfox734.springbootboard.exception.DuplicateEmailException;
-import dizzyfox734.springbootboard.exception.AuthorityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.util.Collections;
-import java.util.Optional;
-import java.util.Random;
 
 @RequiredArgsConstructor
 @Service
 public class MemberService {
 
+    private static final int TEMPORARY_PASSWORD_LENGTH = 8;
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
+    private final MailCertificationService mailCertificationService;
     private final AuthorityRepository authorityRepository;
 
     /**
@@ -52,9 +59,7 @@ public class MemberService {
                 .activated(true)
                 .build();
 
-        this.memberRepository.save(member);
-
-        return member;
+        return memberRepository.save(member);
     }
 
     /**
@@ -67,10 +72,7 @@ public class MemberService {
     @Transactional
     public Member modify(Member member, String password) {
         member.setPassword(passwordEncoder.encode(password));
-
-        this.memberRepository.save(member);
-
-        return member;
+        return memberRepository.save(member);
     }
 
     /**
@@ -81,12 +83,8 @@ public class MemberService {
      * @throws DataNotFoundException 회원이 존재하지 않을 경우 예외를 던짐
      */
     public Member getMember(String username) {
-        Optional<Member> member = this.memberRepository.findOneWithAuthoritiesByUsername(username);
-        if (member.isPresent()) {
-            return member.get();
-        } else {
-            throw new DataNotFoundException("user not found");
-        }
+        return memberRepository.findOneWithAuthoritiesByUsername(username)
+                .orElseThrow(() -> new DataNotFoundException("user not found"));
     }
 
     /**
@@ -97,14 +95,11 @@ public class MemberService {
      * @return 아이디
      * @throws DataNotFoundException 아이디를 찾을 수 없으면 예외를 던짐
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public String findUsername(String name, String email) {
-        Optional<Member> member = this.memberRepository.findByNameAndEmail(name, email);
-        if (member.isPresent()) {
-            return member.get().getUsername();
-        } else {
-            throw new DataNotFoundException("No user found with the provided name and email");
-        }
+        return memberRepository.findByNameAndEmail(name, email)
+                .map(Member::getUsername)
+                .orElseThrow(() -> new DataNotFoundException("No user found with the provided name and email"));
     }
 
     /**
@@ -115,10 +110,9 @@ public class MemberService {
      * @param username 아이디
      * @return 회원이 존재하면 true, 아니면 false
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public boolean existEmail(String name, String email, String username) {
-        Optional<Member> member = this.memberRepository.findByNameAndEmailAndUsername(name, email, username);
-        return member.isPresent();
+        return memberRepository.findByNameAndEmailAndUsername(name, email, username).isPresent();
     }
 
     /**
@@ -128,24 +122,20 @@ public class MemberService {
      */
     @Transactional
     public String resetPasswordAndSendEmail(String name, String email, String username) {
+        Member member = memberRepository.findByNameAndEmailAndUsername(name, email, username)
+                .orElseThrow(() -> new DataNotFoundException("No user found with the provided name and email"));
+
         String temporaryPwd = generateTemporaryPassword();
+        member.setPassword(passwordEncoder.encode(temporaryPwd));
+        memberRepository.save(member);
 
-        Optional<Member> memberOptional = memberRepository.findByNameAndEmailAndUsername(name, email, username);
-        if (memberOptional.isPresent()) {
-            Member member = memberOptional.get();
-            member.setPassword(passwordEncoder.encode(temporaryPwd));
-            memberRepository.save(member);
-
-            try {
-                mailService.sendTemporaryPasswordEmail(email, temporaryPwd);
-            } catch (Exception e) {
-                throw new RuntimeException("이메일 전송 실패", e);
-            }
-
-            return temporaryPwd;
-        } else {
-            throw new DataNotFoundException("No user found with the provided name and email");
+        try {
+            mailService.sendTemporaryPasswordEmail(email, temporaryPwd);
+        } catch (MailSendException | MailMessageBuildException e) {
+            throw e;
         }
+
+        return temporaryPwd;
     }
 
     /**
@@ -154,19 +144,20 @@ public class MemberService {
      * @return 생성된 임시 비밀번호
      */
     private String generateTemporaryPassword() {
-        // 8자리 랜덤 임시 비밀번호 생성 (알파벳 + 숫자)
+        String chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder password = new StringBuilder();
-        Random random = new Random();
-        for (int i = 0; i < 8; i++) {
-            password.append((char) (random.nextInt(26) + 'a')); // a~z
+
+        for (int i = 0; i < TEMPORARY_PASSWORD_LENGTH; i++) {
+            password.append(chars.charAt(RANDOM.nextInt(chars.length())));
         }
+
         return password.toString();
     }
 
     /**
      * 회원가입 검증
      *
-     * @param signupDto
+     * @param signupDto 회원 가입에 필요한 정보를 담은 DTO
      */
     private void validateSignup(SignupDto signupDto) {
         validatePasswordMatch(signupDto);
@@ -194,8 +185,10 @@ public class MemberService {
     }
 
     private void validateEmailVerified(String email, String emailConfirm) {
-        if (!mailService.verifyMail(email, emailConfirm)) {
-            throw new EmailVerificationException("인증코드가 일치하지 않습니다.");
+        try {
+            mailCertificationService.verifyEmailCertificationCode(email, emailConfirm);
+        } catch (ExpiredMailCertificationCodeException | InvalidMailCertificationCodeException e) {
+            throw new EmailVerificationException(e.getMessage());
         }
     }
 }

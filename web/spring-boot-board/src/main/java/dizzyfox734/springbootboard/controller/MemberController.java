@@ -1,13 +1,19 @@
 package dizzyfox734.springbootboard.controller;
 
-import dizzyfox734.springbootboard.controller.dto.*;
+import dizzyfox734.springbootboard.controller.dto.FindIdDto;
+import dizzyfox734.springbootboard.controller.dto.FindPwdDto;
+import dizzyfox734.springbootboard.controller.dto.MemberModifyDto;
+import dizzyfox734.springbootboard.controller.dto.RegisterAgreementDto;
+import dizzyfox734.springbootboard.controller.dto.SignupDto;
+import dizzyfox734.springbootboard.domain.mail.MailCertificationService;
 import dizzyfox734.springbootboard.domain.member.Member;
 import dizzyfox734.springbootboard.exception.DataNotFoundException;
+import dizzyfox734.springbootboard.exception.DuplicateEmailException;
 import dizzyfox734.springbootboard.exception.DuplicateUsernameException;
 import dizzyfox734.springbootboard.exception.EmailVerificationException;
+import dizzyfox734.springbootboard.exception.MailMessageBuildException;
+import dizzyfox734.springbootboard.exception.MailSendException;
 import dizzyfox734.springbootboard.exception.PasswordMismatchException;
-import dizzyfox734.springbootboard.exception.DuplicateEmailException;
-import dizzyfox734.springbootboard.service.MailService;
 import dizzyfox734.springbootboard.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +28,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.security.Principal;
 import java.util.Map;
 
-import static dizzyfox734.springbootboard.common.utils.constants.ResponseConstants.*;
+import static dizzyfox734.springbootboard.common.utils.constants.ResponseConstants.BAD_REQUEST;
+import static dizzyfox734.springbootboard.common.utils.constants.ResponseConstants.CREATED;
 
 @RequestMapping("/member")
 @RequiredArgsConstructor
@@ -30,7 +37,7 @@ import static dizzyfox734.springbootboard.common.utils.constants.ResponseConstan
 public class MemberController {
 
     private final MemberService memberService;
-    private final MailService mailService;
+    private final MailCertificationService mailCertificationService;
 
     @PreAuthorize("isAnonymous")
     @GetMapping("/register")
@@ -41,14 +48,14 @@ public class MemberController {
     /**
      * 이용약관 동의 체크 후 회원가입 페이지로 리다이렉트
      *
-     * @param registerAgreementDto
+     * @param registerAgreementDto 이용약관 동의 DTO
      * @return 리다이렉트할 회원가입 페이지
      */
     @PreAuthorize("isAnonymous")
     @PostMapping("/register")
     public String register(@Valid RegisterAgreementDto registerAgreementDto, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
-            return "member/register"; // 동의 안 했을 경우 다시 폼으로
+            return "member/register";
         }
 
         return "redirect:/member/signup";
@@ -61,11 +68,11 @@ public class MemberController {
     }
 
     /**
-     * 회원 가입을 처리하고 적절한 페이지로 리다이렉트
+     * 회원 가입 처리
      *
-     * @param signupDto 회원 가입에 필요한 데이터를 담은 DTO
-     * @param bindingResult 폼 검증 결과
-     * @return 회원 가입 후 리다이렉트할 페이지
+     * @param signupDto 회원 가입 DTO
+     * @param bindingResult 검증 결과
+     * @return 회원 가입 후 리다이렉트 경로
      */
     @PreAuthorize("isAnonymous")
     @PostMapping("/signup")
@@ -91,21 +98,20 @@ public class MemberController {
     }
 
     /**
-     * 회원 가입을 위한 이메일 인증 코드 전송
+     * 회원 가입용 이메일 인증코드 전송
      *
-     * @param map 이메일 정보가 담긴 Map
+     * @param map 이메일 정보
      * @return HTTP 응답 상태
-     * @throws Exception 이메일 전송 중 발생할 수 있는 예외
      */
     @PreAuthorize("isAnonymous")
     @PostMapping("/signup/sendMail")
-    public ResponseEntity<Void> sendSignUpMail(@RequestBody Map<String, String> map) throws Exception {
+    public ResponseEntity<Void> sendSignUpMail(@RequestBody Map<String, String> map) {
         String email = map.get("email");
-        if (email == null || email.isEmpty()) {
+        if (email == null || email.isBlank()) {
             return BAD_REQUEST;
         }
-        mailService.sendSignUpCheckCodeMail(email);
 
+        mailCertificationService.sendSignupVerificationCode(email);
         return CREATED;
     }
 
@@ -124,10 +130,10 @@ public class MemberController {
     /**
      * 아이디 찾기 요청 처리
      *
-     * @param findIdDto 아이디 찾기에 필요한 데이터를 담은 DTO
-     * @param bindingResult 폼 검증 결과
-     * @param redirectAttributes 리다이렉트 시 전달할 속성
-     * @return 찾은 아이디 또는 오류를 담은 아이디 찾기 페이지
+     * @param findIdDto 아이디 찾기 DTO
+     * @param bindingResult 검증 결과
+     * @param redirectAttributes 리다이렉트 전달값
+     * @return 결과 페이지
      */
     @PreAuthorize("isAnonymous")
     @PostMapping("/find/id")
@@ -138,7 +144,6 @@ public class MemberController {
 
         try {
             String username = memberService.findUsername(findIdDto.getName(), findIdDto.getEmail());
-
             redirectAttributes.addFlashAttribute("username", username);
             return "redirect:/member/find/id";
         } catch (DataNotFoundException e) {
@@ -150,9 +155,9 @@ public class MemberController {
     /**
      * 비밀번호 찾기 요청 처리
      *
-     * @param findPwdDto 비밀번호 찾기에 필요한 데이터를 담은 DTO
-     * @param redirectAttributes 리다이렉트 시 전달할 속성
-     * @return 비밀번호 찾기 결과 페이지
+     * @param findPwdDto 비밀번호 찾기 DTO
+     * @param redirectAttributes 리다이렉트 전달값
+     * @return 결과 페이지
      */
     @PreAuthorize("isAnonymous")
     @PostMapping("/reset/pwd")
@@ -174,8 +179,7 @@ public class MemberController {
                     findPwdDto.getEmail(),
                     findPwdDto.getUsername()
             );
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (MailSendException | MailMessageBuildException e) {
             redirectAttributes.addAttribute("error", e.getMessage());
             return "redirect:/member/find/pwd";
         }
@@ -193,7 +197,6 @@ public class MemberController {
     @GetMapping("/info")
     public String info(Model model, Principal principal, MemberModifyDto memberModifyDto) {
         model.addAttribute("username", principal.getName());
-
         return "member/info";
     }
 
@@ -201,10 +204,10 @@ public class MemberController {
      * 회원 정보 수정
      * (현재 비밀번호만 수정 가능)
      *
-     * @param memberModifyDto 회원 정보 수정에 필요한 데이터를 담은 DTO
-     * @param bindingResult 폼 검증 결과
+     * @param memberModifyDto 회원 정보 수정 DTO
+     * @param bindingResult 검증 결과
      * @param principal 인증된 회원 정보
-     * @return 수정 완료 후 리다이렉트할 페이지
+     * @return 수정 완료 후 리다이렉트 경로
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/modify")
@@ -214,8 +217,7 @@ public class MemberController {
         }
 
         if (!memberModifyDto.getPassword1().equals(memberModifyDto.getPassword2())) {
-            bindingResult.rejectValue("password2", "passwordInCorrect",
-                    "패스워드가 일치하지 않습니다.");
+            bindingResult.rejectValue("password2", "passwordInCorrect", "패스워드가 일치하지 않습니다.");
             return "member/info";
         }
 
