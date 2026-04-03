@@ -1,6 +1,6 @@
 package dizzyfox734.springbootboard;
 
-import dizzyfox734.springbootboard.service.PostService;
+import dizzyfox734.springbootboard.post.service.PostService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -1,6 +1,6 @@
 package dizzyfox734.springbootboard;
 
-import dizzyfox734.springbootboard.domain.mail.MailProperties;
+import dizzyfox734.springbootboard.mail.domain.MailProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
