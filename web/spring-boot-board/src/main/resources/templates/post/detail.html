@@ -19,16 +19,23 @@
                    sec:authorize="isAuthenticated()"
                    th:if="${post.author != null and #authentication.getPrincipal().getUsername() == post.author.username}"
                    th:text="수정"></a>
-                <a href="javascript:void(0);" th:data-uri="@{|/post/delete/${post.id}|}"
-                   class="delete btn btn-sm btn-outline-secondary" sec:authorize="isAuthenticated()"
-                   th:if="${post.author != null and #authentication.getPrincipal().getUsername() == post.author.username}"
-                   th:text="삭제"></a>
+
+                <form th:action="@{|/post/delete/${post.id}|}" method="post"
+                      style="display:inline;"
+                      sec:authorize="isAuthenticated()"
+                      th:if="${post.author != null and #authentication.getPrincipal().getUsername() == post.author.username}"
+                      onsubmit="return confirm('정말로 삭제하시겠습니까?');">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">삭제</button>
+                </form>
             </div>
         </div>
     </div>
+
     <!-- 댓글 갯수 표시 -->
     <h5 class="border-bottom my-3 py-2"
         th:text="|${#lists.size(post.commentList)}개의 댓글이 있습니다.|"></h5>
+
     <!-- 댓글 반복 시작 -->
     <div class="card my-3" th:each="comment, loop : ${post.commentList}">
         <a th:id="|comment_${comment.id}|"></a>
@@ -47,14 +54,20 @@
                    sec:authorize="isAuthenticated()"
                    th:if="${comment.author != null and #authentication.getPrincipal().getUsername() == comment.author.username}"
                    th:text="수정"></a>
-                <a href="javascript:void(0);" th:data-uri="@{|/comment/delete/${comment.id}|}"
-                   class="delete btn btn-sm btn-outline-secondary" sec:authorize="isAuthenticated()"
-                   th:if="${comment.author != null and #authentication.getPrincipal().getUsername() == comment.author.username}"
-                   th:text="삭제"></a>
+
+                <form th:action="@{|/comment/delete/${comment.id}|}" method="post"
+                      style="display:inline;"
+                      sec:authorize="isAuthenticated()"
+                      th:if="${comment.author != null and #authentication.getPrincipal().getUsername() == comment.author.username}"
+                      onsubmit="return confirm('정말로 삭제하시겠습니까?');">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">삭제</button>
+                </form>
             </div>
         </div>
     </div>
     <!-- 댓글 반복 끝  -->
+
     <!-- 댓글 작성 -->
     <form th:action="@{|/comment/create/${post.id}|}" th:object="${commentDto}" method="post" class="my-3">
         <div th:replace="~{common/form_errors :: formErrorsFragment}"></div>
@@ -63,17 +76,5 @@
         <input type="submit" value="등록" class="btn btn-primary my-2">
     </form>
 </div>
-
-<script layout:fragment="script" type='text/javascript'>
-const delete_elements = document.getElementsByClassName("delete");
-
-Array.from(delete_elements).forEach(function(element) {
-    element.addEventListener('click', function() {
-        if(confirm("정말로 삭제하시겠습니까?")) {
-            location.href = this.dataset.uri;
-        };
-    });
-});
-</script>
 
 </html>

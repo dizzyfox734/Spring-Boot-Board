@@ -72,7 +72,7 @@ public class CommentController {
      * 댓글 삭제
      */
     @PreAuthorize("isAuthenticated()")
-    @GetMapping("/delete/{id}")
+    @PostMapping("/delete/{id}")
     public String delete(Principal principal, @PathVariable("id") Integer id) {
         Comment comment = this.commentService.delete(id, principal.getName());
         return String.format("redirect:/post/detail/%s", comment.getPost().getId());

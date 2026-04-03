@@ -45,7 +45,8 @@ public class PostController {
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/create")
-    public String create(PostDto postDto) {
+    public String create(PostDto postDto, Model model) {
+        model.addAttribute("isModify", false);
         return "post/form";
     }
 
@@ -66,10 +67,12 @@ public class PostController {
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/modify/{id}")
-    public String modify(PostDto postDto, @PathVariable("id") Integer id, Principal principal) {
+    public String modify(PostDto postDto, @PathVariable("id") Integer id,
+                         Principal principal, Model model) {
         Post post = this.postService.getPostForModify(id, principal.getName());
         postDto.setTitle(post.getTitle());
         postDto.setContent(post.getContent());
+        model.addAttribute("isModify", true);
         return "post/form";
     }
 
@@ -92,10 +95,10 @@ public class PostController {
      * 포스트 삭제
      */
     @PreAuthorize("isAuthenticated()")
-    @GetMapping("/delete/{id}")
+    @PostMapping("/delete/{id}")
     public String delete(Principal principal, @PathVariable("id") Integer id) {
         this.postService.delete(id, principal.getName());
 
-        return "redirect:/";
+        return "redirect:/post/list";
     }
 }
