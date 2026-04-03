@@ -484,7 +484,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("getMember(): 존재하지 않는 username이면 DataNotFoundException이 발생한다")
-    public void shouldThrowException_whenUsernameNotFound() {
+    public void shouldThrowDataNotFoundException_whenUsernameNotFound() {
         // given
         String username = "testuser";
 
@@ -536,7 +536,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("findUsername(): 일치하는 회원이 없으면 예외가 발생한다")
-    public void shouldThrowException_whenNoMemberMatchesNameAndEmail() {
+    public void shouldThrowDataNotFoundException_whenNoMemberMatchesNameAndEmail() {
         // given
         String name = "홍길동";
         String email = "test@example.com";
@@ -655,7 +655,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("resetPasswordAndSendEmail(): 일치하는 회원이 없으면 DataNotFoundException이 발생한다")
-    public void shouldThrowException_whenNoMemberMatchesForPasswordReset() {
+    public void shouldThrowDataNotFoundException_whenNoMemberMatchesForPasswordReset() {
         // given
         String name = "홍길동";
         String email = "test@example.com";
