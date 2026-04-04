@@ -31,18 +31,18 @@ public class CommentController {
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/create/{id}")
-    public String create(Model model, @PathVariable("id") Integer id,
+    public String create(Model model, @PathVariable("id") Integer postId,
                          @Valid CommentDto commentDto, BindingResult bindingResult,
                          Principal principal) {
-        Post post = this.postService.findOne(id);
+        Post post = this.postService.getPost(postId);
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("post", post);
             return "post/detail";
         }
 
-        Comment comment = this.commentService.create(id, commentDto.getContent(), principal.getName());
-        return String.format("redirect:/post/detail/%s#comment_%s", id, comment.getId());
+        Integer commentId = this.commentService.create(postId, commentDto.getContent(), principal.getName());
+        return String.format("redirect:/post/detail/%s#comment_%s", postId, commentId);
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -59,13 +59,13 @@ public class CommentController {
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/modify/{id}")
     public String modify(@Valid CommentDto commentDto, BindingResult bindingResult,
-                         @PathVariable("id") Integer id, Principal principal) {
+                         @PathVariable("id") Integer postId, Principal principal) {
         if (bindingResult.hasErrors()) {
             return "comment/form";
         }
 
-        Comment comment = this.commentService.modify(id, commentDto.getContent(), principal.getName());
-        return String.format("redirect:/post/detail/%s#comment_%s", comment.getPost().getId(), comment.getId());
+        Integer commentId = this.commentService.modify(postId, commentDto.getContent(), principal.getName());
+        return String.format("redirect:/post/detail/%s#comment_%s", postId, commentId);
     }
 
     /**
@@ -73,8 +73,12 @@ public class CommentController {
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/delete/{id}")
-    public String delete(Principal principal, @PathVariable("id") Integer id) {
-        Comment comment = this.commentService.delete(id, principal.getName());
-        return String.format("redirect:/post/detail/%s", comment.getPost().getId());
+    public String delete(Principal principal, @PathVariable("id") Integer commentId) {
+        Comment comment = commentService.getComment(commentId);
+        Integer postId = comment.getPost().getId();
+
+        commentService.delete(commentId, principal.getName());
+
+        return String.format("redirect:/post/detail/%s", postId);
     }
 }

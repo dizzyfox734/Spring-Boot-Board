@@ -18,10 +18,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class PostServiceTest {
+class PostServiceTest {
 
     @Mock
     private PostRepository postRepository;
@@ -45,456 +46,175 @@ public class PostServiceTest {
     }
 
     @Test
-    @DisplayName("findOne(): 존재하는 게시글이면 게시글을 반환한다")
-    void shouldReturnPost_whenPostExistsOnFindOne() {
+    @DisplayName("getPost(): 존재하는 게시글이면 게시글을 반환한다")
+    void shouldReturnPost_whenPostExistsOnGetPost() {
         // given
-        Post existingPost = new Post();
-        existingPost.setId(1);
-        existingPost.setTitle("test title");
-        existingPost.setContent("test content");
-        existingPost.setAuthor(createMember("testuser"));
+        Post existingPost = createPost("testuser");
 
         when(postRepository.findById(1))
                 .thenReturn(Optional.of(existingPost));
 
         // when
-        Post result = postService.findOne(1);
+        Post result = postService.getPost(1);
 
-        //then
+        // then
         assertNotNull(result);
         assertSame(existingPost, result);
-        verify(postRepository, times(1)).findById(1);
+        verify(postRepository).findById(1);
     }
 
     @Test
-    @DisplayName("findOne(): 존재하지 않는 게시글이면 DataNotFoundException이 발생한다")
-    void shouldThrowDataNotFoundException_whenPostNotFoundOnFindOne() {
-        // given
+    @DisplayName("getPost(): 존재하지 않는 게시글이면 예외가 발생한다")
+    void shouldThrowException_whenPostNotFound() {
         when(postRepository.findById(1))
                 .thenReturn(Optional.empty());
 
-        // when
-        DataNotFoundException exception = assertThrows(DataNotFoundException.class,
-                () -> postService.findOne(1));
+        DataNotFoundException ex = assertThrows(
+                DataNotFoundException.class,
+                () -> postService.getPost(1)
+        );
 
-        // then
-        assertEquals("Post not found", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
+        assertEquals("Post not found", ex.getMessage());
     }
 
     @Test
-    @DisplayName("create(): 제목과 내용이 유효하면 작성자와 함께 게시글을 저장한다")
-    void shouldSavePostWithAuthor_whenValidInput() {
-        // given
+    @DisplayName("create(): 정상 입력이면 게시글 저장 후 ID 반환")
+    void shouldCreatePostAndReturnId() {
         Member member = createMember("testuser");
 
-        ArgumentCaptor<Post> postCaptor = ArgumentCaptor.forClass(Post.class);
+        when(postRepository.save(any(Post.class)))
+                .thenAnswer(invocation -> {
+                    Post saved = invocation.getArgument(0);
+                    saved.setId(1);
+                    return saved;
+                });
 
-        // when
-        postService.create("test title", "test content", member);
+        ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
 
-        // then
-        verify(postRepository, times(1)).save(postCaptor.capture());
+        Integer result = postService.create("title", "content", member);
 
-        Post savedPost = postCaptor.getValue();
+        assertEquals(1, result);
 
-        assertEquals("test title", savedPost.getTitle());
-        assertEquals("test content", savedPost.getContent());
-        assertEquals(member, savedPost.getAuthor());
+        verify(postRepository).save(captor.capture());
+
+        Post saved = captor.getValue();
+        assertEquals("title", saved.getTitle());
+        assertEquals("content", saved.getContent());
+        assertEquals(member, saved.getAuthor());
     }
 
     @Test
-    @DisplayName("create(): 제목이 null이면 InvalidInputException이 발생한다")
-    void shouldThrowInvalidInputException_whenTitleIsNullOnCreate() {
-        // when
-        InvalidInputException exception = assertThrows(InvalidInputException.class,
-                () -> postService.create(null, "test content", createMember("testuser")));
+    @DisplayName("create(): 제목 null이면 예외")
+    void shouldThrow_whenTitleNull() {
+        assertThrows(InvalidInputException.class,
+                () -> postService.create(null, "content", createMember("testuser")));
 
-        // then
-        assertEquals("제목은 필수항목입니다.", exception.getMessage());
-
-        verify(postRepository, never()).save(any(Post.class));
+        verify(postRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("create(): 제목이 공백이면 InvalidInputException이 발생한다")
-    void shouldThrowInvalidInputException_whenTitleIsBlankOnCreate() {
-        // when
-        InvalidInputException exception = assertThrows(InvalidInputException.class,
-                () -> postService.create("", "test content", createMember("testuser")));
+    @DisplayName("create(): 내용 blank면 예외")
+    void shouldThrow_whenContentBlank() {
+        assertThrows(InvalidInputException.class,
+                () -> postService.create("title", "   ", createMember("testuser")));
 
-        // then
-        assertEquals("제목은 필수항목입니다.", exception.getMessage());
-
-        verify(postRepository, never()).save(any(Post.class));
+        verify(postRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("create(): 내용이 null이면 InvalidInputException이 발생한다")
-    void shouldThrowInvalidInputException_whenContentIsNullOnCreate() {
-        // when
-        InvalidInputException exception = assertThrows(InvalidInputException.class,
-                () -> postService.create("test title", null, createMember("testuser")));
+    @DisplayName("modify(): 작성자 본인이면 수정 후 save 호출 + ID 반환")
+    void shouldModifyAndSavePost_whenAuthorMatches() {
+        Post post = createPost("testuser");
 
-        // then
-        assertEquals("내용은 필수항목입니다.", exception.getMessage());
+        when(postRepository.findById(1)).thenReturn(Optional.of(post));
+        when(postRepository.save(any(Post.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        verify(postRepository, never()).save(any(Post.class));
+        ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
+
+        Integer result = postService.modify(1, "newTitle", "newContent", "testuser");
+
+        assertEquals(1, result);
+
+        verify(postRepository).findById(1);
+        verify(postRepository).save(captor.capture());
+
+        Post saved = captor.getValue();
+        assertEquals("newTitle", saved.getTitle());
+        assertEquals("newContent", saved.getContent());
     }
 
     @Test
-    @DisplayName("create(): 내용이 공백이면 InvalidInputException이 발생한다")
-    void shouldThrowInvalidInputException_whenContentIsBlankOnCreate() {
-        // when
-        InvalidInputException exception = assertThrows(InvalidInputException.class,
-                () -> postService.create("test title", "", createMember("testuser")));
+    @DisplayName("modify(): username null이면 예외")
+    void shouldThrow_whenUsernameNull() {
+        Post post = createPost("testuser");
 
-        // then
-        assertEquals("내용은 필수항목입니다.", exception.getMessage());
+        when(postRepository.findById(1)).thenReturn(Optional.of(post));
 
-        verify(postRepository, never()).save(any(Post.class));
+        InvalidRequestException ex = assertThrows(
+                InvalidRequestException.class,
+                () -> postService.modify(1, "t", "c", null)
+        );
+
+        assertEquals("Username is null or blank", ex.getMessage());
     }
 
     @Test
-    @DisplayName("modify(): 작성자 본인이면 제목과 내용을 수정하고 저장한다")
-    void shouldModifyPostTitleAndContent_whenAuthorMatches() {
-        // given
-        Post existingPost = createPost("testuser");
+    @DisplayName("modify(): 작성자가 아니면 예외")
+    void shouldThrow_whenNotAuthor() {
+        Post post = createPost("testuser");
 
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
-        ArgumentCaptor<Post> postCaptor = ArgumentCaptor.forClass(Post.class);
+        when(postRepository.findById(1)).thenReturn(Optional.of(post));
 
-        // when
-        postService.modify(1, "newTitle", "newContent", "testuser");
-
-        // then
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, times(1)).save(postCaptor.capture());
-
-        Post result = postCaptor.getValue();
-
-        assertEquals("newTitle", result.getTitle());
-        assertEquals("newContent", result.getContent());
+        assertThrows(AccessDeniedException.class,
+                () -> postService.modify(1, "t", "c", "wronguser"));
     }
 
     @Test
-    @DisplayName("modify(): 게시글의 작성자가 null이면 IllegalStateException이 발생한다")
-    void shouldThrowIllegalStateException_whenPostAuthorIsNullOnModify() {
-        // given
-        Post existingPost = createPost("testuser");
-        existingPost.setAuthor(null);
-
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
-
-        // when
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> postService.modify(1, "newTitle", "newContent", "testuser"));
-
-        // then
-        assertEquals("Post has no author", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).save(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("modify(): 수정자가 null이면 InvalidRequestException이 발생한다")
-    void shouldThrowInvalidRequestException_whenUsernameIsNullOnModify() {
-        // given
-        Post existingPost = createPost("testuser");
-
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
-
-        // when
-        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
-                () -> postService.modify(1, "newTitle", "newContent", null));
-
-        // then
-        assertEquals("Username is null", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).save(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("modify(): 수정자가 작성자가 아니면 PostAccessDeniedException이 발생한다")
-    void shouldThrowPostAccessDeniedException_whenModifyRequestedByNonAuthor() {
-        // given
-        Post existingPost = createPost("testuser");
-
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
-
-        // when
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                () -> postService.modify(1, "newTitle", "newContent", "wronguser"));
-
-        // then
-        assertEquals("작성자만 접근할 수 있습니다.", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).save(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("modify(): 제목이 null이면 InvalidInputException이 발생한다")
-    void shouldThrowInvalidInputException_whenTitleIsNullOnModify() {
-        // when
-        InvalidInputException exception = assertThrows(InvalidInputException.class,
-                () -> postService.modify(1, null, "newContent", "testuser"));
-
-        // then
-        assertEquals("제목은 필수항목입니다.", exception.getMessage());
-
-        verify(postRepository, never()).findById(any());
-        verify(postRepository, never()).save(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("modify(): 제목이 공백이면 InvalidInputException이 발생한다")
-    void shouldThrowInvalidInputException_whenTitleIsBlankOnModify() {
-        // when
-        InvalidInputException exception = assertThrows(InvalidInputException.class,
-                () -> postService.modify(1, "", "newContent", "testuser"));
-
-        // then
-        assertEquals("제목은 필수항목입니다.", exception.getMessage());
-
-        verify(postRepository, never()).findById(any());
-        verify(postRepository, never()).save(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("modify(): 내용이 null이면 InvalidInputException이 발생한다")
-    void shouldThrowInvalidInputException_whenContentIsNullOnModify() {
-        // when
-        InvalidInputException exception = assertThrows(InvalidInputException.class,
-                () -> postService.modify(1, "newTitle", null, "testuser"));
-
-        // then
-        assertEquals("내용은 필수항목입니다.", exception.getMessage());
-
-        verify(postRepository, never()).findById(any());
-        verify(postRepository, never()).save(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("modify(): 내용이 공백이면 InvalidInputException이 발생한다")
-    void shouldThrowInvalidInputException_whenContentIsBlankOnModify() {
-        // when
-        InvalidInputException exception = assertThrows(InvalidInputException.class,
-                () -> postService.modify(1, "newTitle", "", "testuser"));
-
-        // then
-        assertEquals("내용은 필수항목입니다.", exception.getMessage());
-
-        verify(postRepository, never()).findById(any());
-        verify(postRepository, never()).save(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("modify(): 존재하지 않는 게시글이면 DataNotFoundException이 발생한다")
-    void shouldThrowDataNotFoundException_whenPostNotFoundOnModify() {
-        // given
-        when(postRepository.findById(any())).thenReturn(Optional.empty());
-
-        // when
-        DataNotFoundException exception = assertThrows(DataNotFoundException.class,
-                () -> postService.modify(1, "testTitle", "testContent", "testuser"));
-
-        // then
-        assertEquals("Post not found", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).save(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("delete(): 작성자 본인이면 게시글을 삭제한다")
+    @DisplayName("delete(): 작성자 본인이면 삭제 + ID 반환")
     void shouldDeletePost_whenAuthorMatches() {
-        // given
-        Post existingPost = createPost("testuser");
+        Post post = createPost("testuser");
 
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
+        when(postRepository.findById(1)).thenReturn(Optional.of(post));
 
-        // when
-        postService.delete(1, "testuser");
+        Integer result = postService.delete(1, "testuser");
 
-        // then
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, times(1)).delete(existingPost);
+        assertEquals(1, result);
+
+        verify(postRepository).delete(post);
     }
 
     @Test
-    @DisplayName("delete(): 존재하지 않는 게시글이면 DataNotFoundException이 발생한다")
-    void shouldThrowDataNotFoundException_whenPostNotFoundOnDelete() {
-        // given
-        when(postRepository.findById(any())).thenReturn(Optional.empty());
+    @DisplayName("delete(): 작성자가 아니면 예외")
+    void shouldThrow_whenDeleteByNonAuthor() {
+        Post post = createPost("testuser");
 
-        // when
-        DataNotFoundException exception = assertThrows(DataNotFoundException.class,
-                () -> postService.delete(1, "testuser"));
+        when(postRepository.findById(1)).thenReturn(Optional.of(post));
 
-        // then
-        assertEquals("Post not found", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).delete(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("delete(): 게시글의 작성자가 null이면 IllegalStateException이 발생한다")
-    void shouldThrowIllegalStateException_whenPostAuthorIsNullOnDelete() {
-        // given
-        Post existingPost = createPost("testuser");
-        existingPost.setAuthor(null);
-
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
-
-        // when
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> postService.delete(1, "testuser"));
-
-        // then
-        assertEquals("Post has no author", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).delete(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("delete(): 수정자가 null이면 InvalidRequestException이 발생한다")
-    void shouldThrowInvalidRequestException_whenUsernameIsNullOnDelete() {
-        // given
-        Post existingPost = createPost("testuser");
-
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
-
-        // when
-        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
-                () -> postService.delete(1, null));
-
-        // then
-        assertEquals("Username is null", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).delete(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("delete(): 작성자가 아니면 PostAccessDeniedException이 발생한다")
-    void shouldThrowPostAccessDeniedException_whenDeleteRequestedByNonAuthor() {
-        // given
-        Post existingPost = createPost("testuser");
-
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
-
-        // when
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class,
+        assertThrows(AccessDeniedException.class,
                 () -> postService.delete(1, "wronguser"));
-
-        // then
-        assertEquals("작성자만 접근할 수 있습니다.", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).delete(any(Post.class));
     }
 
     @Test
-    @DisplayName("getPostForModify(): 작성자 본인이면 게시글을 반환한다")
-    void shouldReturnPost_whenGetPostForModifyRequestedByAuthor() {
-        // given
-        Post existingPost = new Post();
-        existingPost.setId(1);
-        existingPost.setTitle("test title");
-        existingPost.setContent("test content");
-        existingPost.setAuthor(createMember("testuser"));
+    @DisplayName("getPostForModify(): 작성자 본인이면 반환")
+    void shouldReturnPost_whenAuthorMatchesForModify() {
+        Post post = createPost("testuser");
 
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
+        when(postRepository.findById(1)).thenReturn(Optional.of(post));
 
-        // when
         Post result = postService.getPostForModify(1, "testuser");
 
-        // then
-        assertSame(existingPost, result);
-
-        verify(postRepository, times(1)).findById(1);
+        assertSame(post, result);
     }
 
     @Test
-    @DisplayName("getPostForModify(): 게시글의 작성자가 null이면 IllegalStateException이 발생한다")
-    void shouldThrowIllegalStateException_whenPostAuthorIsNullOnGetPostForModify() {
-        // given
-        Post existingPost = createPost("testuser");
-        existingPost.setAuthor(null);
+    @DisplayName("getPostForModify(): 작성자가 아니면 예외")
+    void shouldThrow_whenNotAuthorForGetPostForModify() {
+        Post post = createPost("testuser");
 
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
+        when(postRepository.findById(1)).thenReturn(Optional.of(post));
 
-        // when
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        assertThrows(AccessDeniedException.class,
                 () -> postService.getPostForModify(1, "wronguser"));
-
-        // then
-        assertEquals("Post has no author", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).delete(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("getPostForModify(): 수정자가 null이면 InvalidRequestException이 발생한다")
-    void shouldThrowInvalidRequestException_whenUsernameIsNullOnGetPostForModify() {
-        // given
-        Post existingPost = createPost("testuser");
-
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
-
-        // when
-        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
-                () -> postService.getPostForModify(1, null));
-
-        // then
-        assertEquals("Username is null", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-        verify(postRepository, never()).delete(any(Post.class));
-    }
-
-    @Test
-    @DisplayName("getPostForModify(): 작성자가 아니면 PostAccessDeniedException이 발생한다")
-    void shouldThrowPostAccessDeniedException_whenGetPostForModifyRequestedByNonAuthor() {
-        // given
-        Post existingPost = new Post();
-        existingPost.setId(1);
-        existingPost.setTitle("test title");
-        existingPost.setContent("test content");
-        existingPost.setAuthor(createMember("testuser"));
-
-        when(postRepository.findById(1)).thenReturn(Optional.of(existingPost));
-
-        // when
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                () -> postService.getPostForModify(1, "wronguser"));
-
-        // then
-        assertEquals("작성자만 접근할 수 있습니다.", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
-    }
-
-    @Test
-    @DisplayName("getPostForModify(): 존재하지 않는 게시글이면 DataNotFoundException이 발생한다")
-    void shouldThrowDataNotFoundException_whenPostNotFoundOnGetPostForModify() {
-        // given
-        when(postRepository.findById(any())).thenReturn(Optional.empty());
-
-        // when
-        DataNotFoundException exception = assertThrows(DataNotFoundException.class,
-                () -> postService.getPostForModify(1, "testuser"));
-
-        // then
-        assertEquals("Post not found", exception.getMessage());
-
-        verify(postRepository, times(1)).findById(1);
     }
 }

@@ -3,8 +3,6 @@ package dizzyfox734.springbootboard.member.service;
 import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.mail.exception.ExpiredMailCertificationCodeException;
 import dizzyfox734.springbootboard.mail.exception.InvalidMailCertificationCodeException;
-import dizzyfox734.springbootboard.mail.exception.MailMessageBuildException;
-import dizzyfox734.springbootboard.mail.exception.MailSendException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
 import dizzyfox734.springbootboard.mail.service.MailService;
 import dizzyfox734.springbootboard.member.controller.dto.SignupDto;
@@ -38,10 +36,10 @@ public class MemberService {
      * 회원 생성
      *
      * @param signupDto 회원 가입에 필요한 정보를 담고 있는 DTO
-     * @return 생성된 회원 객체
+     * @return 생성된 회원의 id
      */
     @Transactional
-    public Member create(SignupDto signupDto) {
+    public Long create(SignupDto signupDto) {
         validateSignup(signupDto);
 
         Authority authority = authorityRepository.findById("ROLE_USER")
@@ -56,20 +54,22 @@ public class MemberService {
                 .activated(true)
                 .build();
 
-        return memberRepository.save(member);
+        Member savedMember = memberRepository.save(member);
+        return savedMember.getId();
     }
 
     /**
-     * 회원 정보 수정
+     * 회원 정보 수정 (지금은 비번만 바꿀 수 있음)
      *
      * @param member 수정할 회원 객체
      * @param password 새로운 비밀번호
-     * @return 수정된 회원 객체
+     * @return 수정된 회원의 id
      */
     @Transactional
-    public Member modify(Member member, String password) {
+    public Long modify(Member member, String password) {
         member.setPassword(passwordEncoder.encode(password));
-        return memberRepository.save(member);
+        memberRepository.save(member);
+        return member.getId();
     }
 
     /**
@@ -79,6 +79,7 @@ public class MemberService {
      * @return 회원 객체
      * @throws DataNotFoundException 회원이 존재하지 않을 경우 예외를 던짐
      */
+    @Transactional(readOnly = true)
     public Member getMember(String username) {
         return memberRepository.findOneWithAuthoritiesByUsername(username)
                 .orElseThrow(() -> new DataNotFoundException("user not found"));
@@ -108,7 +109,7 @@ public class MemberService {
      * @return 회원이 존재하면 true, 아니면 false
      */
     @Transactional(readOnly = true)
-    public boolean existEmail(String name, String email, String username) {
+    public boolean existsForPasswordReset(String name, String email, String username) {
         return memberRepository.findByNameAndEmailAndUsername(name, email, username).isPresent();
     }
 
@@ -126,11 +127,7 @@ public class MemberService {
         member.setPassword(passwordEncoder.encode(temporaryPwd));
         memberRepository.save(member);
 
-        try {
-            mailService.sendTemporaryPasswordEmail(email, temporaryPwd);
-        } catch (MailSendException | MailMessageBuildException e) {
-            throw e;
-        }
+        mailService.sendTemporaryPasswordEmail(email, temporaryPwd);
 
         return temporaryPwd;
     }

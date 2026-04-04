@@ -10,7 +10,11 @@ import dizzyfox734.springbootboard.mail.service.MailService;
 import dizzyfox734.springbootboard.member.controller.dto.SignupDto;
 import dizzyfox734.springbootboard.member.domain.Authority;
 import dizzyfox734.springbootboard.member.domain.Member;
-import dizzyfox734.springbootboard.member.exception.*;
+import dizzyfox734.springbootboard.member.exception.AuthorityNotFoundException;
+import dizzyfox734.springbootboard.member.exception.DuplicateEmailException;
+import dizzyfox734.springbootboard.member.exception.DuplicateUsernameException;
+import dizzyfox734.springbootboard.member.exception.EmailVerificationException;
+import dizzyfox734.springbootboard.member.exception.PasswordMismatchException;
 import dizzyfox734.springbootboard.member.repository.AuthorityRepository;
 import dizzyfox734.springbootboard.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -31,7 +35,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class MemberServiceTest {
+class MemberServiceTest {
 
     @Mock
     private MemberRepository memberRepository;
@@ -52,8 +56,8 @@ public class MemberServiceTest {
     private MemberService memberService;
 
     @Test
-    @DisplayName("create(): 유효한 회원가입 정보가 주어지면 회원을 생성하고 저장한다")
-    public void shouldCreateMember_whenSignupRequestIsValid() {
+    @DisplayName("create(): 유효한 회원가입 정보가 주어지면 회원을 생성하고 저장한 뒤 회원 ID를 반환한다")
+    void shouldCreateMemberAndReturnMemberId_whenCreateRequestIsValid() {
         // given
         SignupDto dto = new SignupDto();
         dto.setUsername("testuser");
@@ -77,23 +81,20 @@ public class MemberServiceTest {
                 .thenReturn("encodedPassword");
 
         when(memberRepository.save(any(Member.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> {
+                    Member savedMember = invocation.getArgument(0);
+                    savedMember.setId(1L);
+                    return savedMember;
+                });
+
+        ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
 
         // when
-        Member result = memberService.create(dto);
+        Long result = memberService.create(dto);
 
         // then
         assertNotNull(result);
-        assertEquals("testuser", result.getUsername());
-        assertEquals("홍길동", result.getName());
-        assertEquals("test@example.com", result.getEmail());
-        assertEquals("encodedPassword", result.getPassword());
-        assertNotEquals("password123", result.getPassword());
-        assertTrue(result.isActivated());
-
-        assertNotNull(result.getAuthorities());
-        assertEquals(1, result.getAuthorities().size());
-        assertTrue(result.getAuthorities().contains(roleUser));
+        assertEquals(1L, result);
 
         verify(memberRepository, times(1))
                 .findOneWithAuthoritiesByUsername("testuser");
@@ -106,23 +107,23 @@ public class MemberServiceTest {
         verify(passwordEncoder, times(1))
                 .encode("password123");
         verify(memberRepository, times(1))
-                .save(any(Member.class));
-
-        ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
-        verify(memberRepository).save(memberCaptor.capture());
+                .save(memberCaptor.capture());
 
         Member capturedMember = memberCaptor.getValue();
         assertEquals("testuser", capturedMember.getUsername());
         assertEquals("홍길동", capturedMember.getName());
         assertEquals("test@example.com", capturedMember.getEmail());
         assertEquals("encodedPassword", capturedMember.getPassword());
+        assertNotEquals("password123", capturedMember.getPassword());
         assertTrue(capturedMember.isActivated());
+        assertNotNull(capturedMember.getAuthorities());
+        assertEquals(1, capturedMember.getAuthorities().size());
         assertTrue(capturedMember.getAuthorities().contains(roleUser));
     }
 
     @Test
     @DisplayName("create(): 비밀번호 확인이 일치하지 않으면 PasswordMismatchException이 발생한다")
-    public void shouldThrowPasswordMismatchException_whenPasswordsDoNotMatch() {
+    void shouldThrowPasswordMismatchException_whenPasswordsDoNotMatch() {
         // given
         SignupDto dto = new SignupDto();
         dto.setUsername("testuser");
@@ -151,7 +152,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("create(): username이 중복되면 DuplicateUsernameException이 발생한다")
-    public void shouldThrowDuplicateUsernameException_whenUsernameAlreadyExists() {
+    void shouldThrowDuplicateUsernameException_whenUsernameAlreadyExists() {
         // given
         SignupDto dto = new SignupDto();
         dto.setUsername("testuser");
@@ -191,7 +192,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("create(): email이 중복되면 DuplicateEmailException이 발생한다")
-    public void shouldThrowDuplicateEmailException_whenEmailAlreadyExists() {
+    void shouldThrowDuplicateEmailException_whenEmailAlreadyExists() {
         // given
         SignupDto dto = new SignupDto();
         dto.setUsername("testuser");
@@ -233,7 +234,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("create(): 인증코드가 일치하지 않으면 EmailVerificationException이 발생한다")
-    public void shouldThrowEmailVerificationException_whenCertificationCodeIsInvalid() {
+    void shouldThrowEmailVerificationException_whenCertificationCodeIsInvalid() {
         // given
         SignupDto dto = new SignupDto();
         dto.setUsername("testuser");
@@ -271,7 +272,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("create(): 인증코드가 없거나 만료되면 EmailVerificationException이 발생한다")
-    public void shouldThrowEmailVerificationException_whenCertificationCodeIsExpired() {
+    void shouldThrowEmailVerificationException_whenCertificationCodeIsExpired() {
         // given
         SignupDto dto = new SignupDto();
         dto.setUsername("testuser");
@@ -309,7 +310,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("create(): 기본 권한 조회에 실패하면 AuthorityNotFoundException이 발생한다")
-    public void shouldThrowAuthorityNotFoundException_whenDefaultAuthorityIsMissing() {
+    void shouldThrowAuthorityNotFoundException_whenDefaultAuthorityIsMissing() {
         // given
         SignupDto dto = new SignupDto();
         dto.setUsername("testuser");
@@ -346,7 +347,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("create(): 저장 중 repository에서 예외가 발생하면 예외가 전파된다")
-    public void shouldPropagateException_whenRepositorySaveFailsInCreate() {
+    void shouldPropagateException_whenRepositorySaveFailsInCreate() {
         // given
         SignupDto dto = new SignupDto();
         dto.setUsername("testuser");
@@ -388,10 +389,11 @@ public class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("modify(): 회원 객체와 새 비밀번호가 주어지면 비밀번호를 인코딩하고 저장한 뒤 반환한다")
-    public void shouldModifyMemberPassword_whenMemberAndPasswordProvided() {
+    @DisplayName("modify(): 회원 객체와 새 비밀번호가 주어지면 비밀번호를 인코딩하고 저장한 뒤 회원 ID를 반환한다")
+    void shouldModifyMemberPasswordAndReturnMemberId_whenMemberAndPasswordProvided() {
         // given
         Member member = Member.builder()
+                .id(1L)
                 .username("testuser")
                 .name("홍길동")
                 .email("test@example.com")
@@ -405,13 +407,14 @@ public class MemberServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // when
-        Member result = memberService.modify(member, "newPassword");
+        Long result = memberService.modify(member, "newPassword");
 
         // then
         assertNotNull(result);
-        assertEquals("newEncodedPassword", result.getPassword());
-        assertNotEquals("oldEncodedPassword", result.getPassword());
-        assertNotEquals("newPassword", result.getPassword());
+        assertEquals(1L, result);
+        assertEquals("newEncodedPassword", member.getPassword());
+        assertNotEquals("oldEncodedPassword", member.getPassword());
+        assertNotEquals("newPassword", member.getPassword());
 
         verify(passwordEncoder, times(1)).encode("newPassword");
         verify(memberRepository, times(1)).save(any(Member.class));
@@ -425,9 +428,10 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("modify(): 저장 중 repository에서 예외가 발생하면 예외가 전파된다")
-    public void shouldPropagateException_whenRepositorySaveFailsInModify() {
+    void shouldPropagateException_whenRepositorySaveFailsInModify() {
         // given
         Member member = Member.builder()
+                .id(1L)
                 .username("testuser")
                 .name("홍길동")
                 .email("test@example.com")
@@ -455,7 +459,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("getMember(): username으로 회원을 조회한다")
-    public void shouldGetMemberByUsername_whenUsernameExists() {
+    void shouldGetMemberByUsername_whenUsernameExists() {
         // given
         String username = "testuser";
         Authority authority = Authority.builder()
@@ -484,7 +488,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("getMember(): 존재하지 않는 username이면 DataNotFoundException이 발생한다")
-    public void shouldThrowDataNotFoundException_whenUsernameNotFound() {
+    void shouldThrowDataNotFoundException_whenUsernameNotFound() {
         // given
         String username = "testuser";
 
@@ -504,7 +508,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("findUsername(): 이름과 이메일로 username을 찾는다")
-    public void shouldFindUsername_whenNameAndEmailMatch() {
+    void shouldFindUsername_whenNameAndEmailMatch() {
         // given
         String name = "홍길동";
         String username = "testuser";
@@ -536,7 +540,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("findUsername(): 일치하는 회원이 없으면 예외가 발생한다")
-    public void shouldThrowDataNotFoundException_whenNoMemberMatchesNameAndEmail() {
+    void shouldThrowDataNotFoundException_whenNoMemberMatchesNameAndEmail() {
         // given
         String name = "홍길동";
         String email = "test@example.com";
@@ -556,8 +560,8 @@ public class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("existEmail(): 이름, 이메일, 아이디가 모두 일치하면 회원이 존재함을 반환한다")
-    public void shouldReturnExists_whenNameEmailAndUsernameMatch() {
+    @DisplayName("existsForPasswordReset(): 이름, 이메일, 아이디가 모두 일치하면 회원이 존재함을 반환한다")
+    void shouldReturnExists_whenNameEmailAndUsernameMatch() {
         // given
         String name = "홍길동";
         String email = "test@example.com";
@@ -578,7 +582,7 @@ public class MemberServiceTest {
                 .thenReturn(Optional.of(existingMember));
 
         // when
-        boolean result = memberService.existEmail(name, email, username);
+        boolean result = memberService.existsForPasswordReset(name, email, username);
 
         // then
         assertTrue(result);
@@ -588,8 +592,8 @@ public class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("existEmail(): 일치하는 회원이 없으면 회원이 존재하지 않음을 반환한다")
-    public void shouldReturnNotExists_whenNoMemberMatchesAllFields() {
+    @DisplayName("existsForPasswordReset(): 일치하는 회원이 없으면 회원이 존재하지 않음을 반환한다")
+    void shouldReturnNotExists_whenNoMemberMatchesAllFields() {
         // given
         String name = "홍길동";
         String email = "test@example.com";
@@ -599,7 +603,7 @@ public class MemberServiceTest {
                 .thenReturn(Optional.empty());
 
         // when
-        boolean result = memberService.existEmail(name, email, username);
+        boolean result = memberService.existsForPasswordReset(name, email, username);
 
         // then
         assertFalse(result);
@@ -610,7 +614,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("resetPasswordAndSendEmail(): 일치하는 회원이 있으면 임시 비밀번호를 생성하고 저장한 뒤 이메일로 전송한다")
-    public void shouldResetPasswordAndSendTemporaryPasswordEmail_whenMemberExists() {
+    void shouldResetPasswordAndSendTemporaryPasswordEmail_whenMemberExists() {
         // given
         String name = "홍길동";
         String email = "test@example.com";
@@ -655,7 +659,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("resetPasswordAndSendEmail(): 일치하는 회원이 없으면 DataNotFoundException이 발생한다")
-    public void shouldThrowDataNotFoundException_whenNoMemberMatchesForPasswordReset() {
+    void shouldThrowDataNotFoundException_whenNoMemberMatchesForPasswordReset() {
         // given
         String name = "홍길동";
         String email = "test@example.com";
@@ -680,7 +684,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("resetPasswordAndSendEmail(): 메일 전송 실패 시 MailSendException이 전파된다")
-    public void shouldPropagateMailSendException_whenTemporaryPasswordEmailSendFails() {
+    void shouldPropagateMailSendException_whenTemporaryPasswordEmailSendFails() {
         // given
         String name = "홍길동";
         String email = "test@example.com";
@@ -724,7 +728,7 @@ public class MemberServiceTest {
 
     @Test
     @DisplayName("resetPasswordAndSendEmail(): 메시지 생성 실패 시 MailMessageBuildException이 전파된다")
-    public void shouldPropagateMailMessageBuildException_whenTemporaryPasswordMessageBuildFails() {
+    void shouldPropagateMailMessageBuildException_whenTemporaryPasswordMessageBuildFails() {
         // given
         String name = "홍길동";
         String email = "test@example.com";

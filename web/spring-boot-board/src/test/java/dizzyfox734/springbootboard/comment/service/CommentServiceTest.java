@@ -61,29 +61,31 @@ public class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("create(): 유효한 게시글, 내용, 작성자가 주어지면 댓글을 생성하고 저장한 뒤 반환한다")
-    void shouldCreateAndSaveComment_whenValidPostContentAndAuthorAreGiven() {
+    @DisplayName("create(): 유효한 게시글, 내용, 작성자가 주어지면 댓글을 생성하고 저장한 뒤 댓글 ID를 반환한다")
+    void shouldCreateAndSaveCommentAndReturnCommentId_whenValidPostContentAndAuthorAreGiven() {
         // given
         Member member = createMember();
         Post post = createPost();
 
-        when(postService.findOne(1)).thenReturn(post);
+        when(postService.getPost(1)).thenReturn(post);
         when(memberService.getMember("testuser")).thenReturn(member);
         when(commentRepository.save(any(Comment.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> {
+                    Comment savedComment = invocation.getArgument(0);
+                    savedComment.setId(1);
+                    return savedComment;
+                });
 
         ArgumentCaptor<Comment> commentCaptor = ArgumentCaptor.forClass(Comment.class);
 
         // when
-        Comment result = commentService.create(1, "test content", "testuser");
+        Integer result = commentService.create(1, "test content", "testuser");
 
         // then
         assertNotNull(result);
-        assertEquals("test content", result.getContent());
-        assertEquals(post, result.getPost());
-        assertEquals(member, result.getAuthor());
+        assertEquals(1, result);
 
-        verify(postService, times(1)).findOne(1);
+        verify(postService, times(1)).getPost(1);
         verify(memberService, times(1)).getMember("testuser");
         verify(commentRepository, times(1)).save(commentCaptor.capture());
 
@@ -113,7 +115,19 @@ public class CommentServiceTest {
                 () -> commentService.create(1, "test content", null));
 
         // then
-        assertEquals("Username is null", exception.getMessage());
+        assertEquals("Username is null or blank", exception.getMessage());
+        verifyNoInteractions(postService, memberService, commentRepository);
+    }
+
+    @Test
+    @DisplayName("create(): 사용자명이 공백이면 예외가 발생한다")
+    void shouldThrowInvalidRequestException_whenUsernameIsBlankForCreate() {
+        // when
+        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
+                () -> commentService.create(1, "test content", "   "));
+
+        // then
+        assertEquals("Username is null or blank", exception.getMessage());
         verifyNoInteractions(postService, memberService, commentRepository);
     }
 
@@ -145,7 +159,7 @@ public class CommentServiceTest {
     @DisplayName("create(): 존재하지 않는 게시글 ID면 예외가 발생한다")
     void shouldPropagateException_whenPostDoesNotExistForCreate() {
         // given
-        when(postService.findOne(1))
+        when(postService.getPost(1))
                 .thenThrow(new DataNotFoundException("post not found"));
 
         // when
@@ -154,7 +168,7 @@ public class CommentServiceTest {
 
         // then
         assertEquals("post not found", exception.getMessage());
-        verify(postService, times(1)).findOne(1);
+        verify(postService, times(1)).getPost(1);
         verifyNoInteractions(memberService);
         verify(commentRepository, never()).save(any(Comment.class));
     }
@@ -165,7 +179,7 @@ public class CommentServiceTest {
         // given
         Post post = createPost();
 
-        when(postService.findOne(1)).thenReturn(post);
+        when(postService.getPost(1)).thenReturn(post);
         when(memberService.getMember("testuser"))
                 .thenThrow(new DataNotFoundException("member not found"));
 
@@ -175,13 +189,13 @@ public class CommentServiceTest {
 
         // then
         assertEquals("member not found", exception.getMessage());
-        verify(postService, times(1)).findOne(1);
+        verify(postService, times(1)).getPost(1);
         verify(memberService, times(1)).getMember("testuser");
         verify(commentRepository, never()).save(any(Comment.class));
     }
 
     @Test
-    @DisplayName("findOne(): 존재하는 댓글 ID가 주어지면 댓글을 반환한다")
+    @DisplayName("getComment(): 존재하는 댓글 ID가 주어지면 댓글을 반환한다")
     void shouldReturnComment_whenCommentExists() {
         // given
         Member member = createMember();
@@ -191,7 +205,7 @@ public class CommentServiceTest {
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
 
         // when
-        Comment result = commentService.findOne(1);
+        Comment result = commentService.getComment(1);
 
         // then
         assertNotNull(result);
@@ -200,14 +214,14 @@ public class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("findOne(): 존재하지 않는 댓글 ID가 주어지면 예외가 발생한다")
+    @DisplayName("getComment(): 존재하지 않는 댓글 ID가 주어지면 예외가 발생한다")
     void shouldThrowDataNotFoundException_whenCommentDoesNotExist() {
         // given
         when(commentRepository.findById(1)).thenReturn(Optional.empty());
 
         // when
         DataNotFoundException exception = assertThrows(DataNotFoundException.class,
-                () -> commentService.findOne(1));
+                () -> commentService.getComment(1));
 
         // then
         assertEquals("comment not found", exception.getMessage());
@@ -253,7 +267,19 @@ public class CommentServiceTest {
                 () -> commentService.getCommentForModify(1, null));
 
         // then
-        assertEquals("Username is null", exception.getMessage());
+        assertEquals("Username is null or blank", exception.getMessage());
+        verify(commentRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("getCommentForModify(): 요청 사용자명이 공백이면 예외가 발생한다")
+    void shouldThrowInvalidRequestException_whenUsernameIsBlankForGetCommentForModify() {
+        // when
+        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
+                () -> commentService.getCommentForModify(1, "   "));
+
+        // then
+        assertEquals("Username is null or blank", exception.getMessage());
         verify(commentRepository, never()).findById(any());
     }
 
@@ -312,8 +338,8 @@ public class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("modify(): 작성자 본인이 요청하면 댓글 내용을 수정하고 저장한 뒤 반환한다")
-    void shouldModifyAndSaveComment_whenRequesterIsAuthor() {
+    @DisplayName("modify(): 작성자 본인이 요청하면 댓글 내용을 수정하고 저장한 뒤 댓글 ID를 반환한다")
+    void shouldModifyAndSaveCommentAndReturnCommentId_whenRequesterIsAuthor() {
         // given
         Member member = createMember();
         Post post = createPost();
@@ -326,12 +352,12 @@ public class CommentServiceTest {
         ArgumentCaptor<Comment> commentCaptor = ArgumentCaptor.forClass(Comment.class);
 
         // when
-        Comment result = commentService.modify(1, "new content", "testuser");
+        Integer result = commentService.modify(1, "new content", "testuser");
 
         // then
         assertNotNull(result);
-        assertSame(comment, result);
-        assertEquals("new content", result.getContent());
+        assertEquals(1, result);
+        assertEquals("new content", comment.getContent());
 
         verify(commentRepository, times(1)).findById(1);
         verify(commentRepository, times(1)).save(commentCaptor.capture());
@@ -361,7 +387,20 @@ public class CommentServiceTest {
                 () -> commentService.modify(1, "new content", null));
 
         // then
-        assertEquals("Username is null", exception.getMessage());
+        assertEquals("Username is null or blank", exception.getMessage());
+        verify(commentRepository, never()).findById(any());
+        verify(commentRepository, never()).save(any(Comment.class));
+    }
+
+    @Test
+    @DisplayName("modify(): 요청 사용자명이 공백이면 예외가 발생하고 저장하지 않는다")
+    void shouldThrowInvalidRequestExceptionAndNotSave_whenUsernameIsBlankForModify() {
+        // when
+        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
+                () -> commentService.modify(1, "new content", "   "));
+
+        // then
+        assertEquals("Username is null or blank", exception.getMessage());
         verify(commentRepository, never()).findById(any());
         verify(commentRepository, never()).save(any(Comment.class));
     }
@@ -448,8 +487,8 @@ public class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("delete(): 작성자 본인이 요청하면 댓글을 삭제하고 반환한다")
-    void shouldDeleteComment_whenRequesterIsAuthor() {
+    @DisplayName("delete(): 작성자 본인이 요청하면 댓글을 삭제하고 댓글 ID를 반환한다")
+    void shouldDeleteCommentAndReturnCommentId_whenRequesterIsAuthor() {
         // given
         Member member = createMember();
         Post post = createPost();
@@ -458,11 +497,11 @@ public class CommentServiceTest {
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
 
         // when
-        Comment result = commentService.delete(1, "testuser");
+        Integer result = commentService.delete(1, "testuser");
 
         // then
         assertNotNull(result);
-        assertSame(comment, result);
+        assertEquals(1, result);
         verify(commentRepository, times(1)).findById(1);
         verify(commentRepository, times(1)).delete(comment);
     }
@@ -488,7 +527,20 @@ public class CommentServiceTest {
                 () -> commentService.delete(1, null));
 
         // then
-        assertEquals("Username is null", exception.getMessage());
+        assertEquals("Username is null or blank", exception.getMessage());
+        verify(commentRepository, never()).findById(any());
+        verify(commentRepository, never()).delete(any(Comment.class));
+    }
+
+    @Test
+    @DisplayName("delete(): 요청 사용자명이 공백이면 예외가 발생하고 삭제하지 않는다")
+    void shouldThrowInvalidRequestExceptionAndNotDelete_whenUsernameIsBlankForDelete() {
+        // when
+        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
+                () -> commentService.delete(1, "   "));
+
+        // then
+        assertEquals("Username is null or blank", exception.getMessage());
         verify(commentRepository, never()).findById(any());
         verify(commentRepository, never()).delete(any(Comment.class));
     }

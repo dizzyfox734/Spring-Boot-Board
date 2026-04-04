@@ -28,7 +28,7 @@ public class PostController {
     @GetMapping("/list")
     public String list(Model model, @RequestParam(value="page", defaultValue="0") int page,
                        @RequestParam(value = "kw", defaultValue = "") String kw) {
-        Page<Post> paging = this.postService.getList(page, kw);
+        Page<Post> paging = this.postService.findPosts(page, kw);
         model.addAttribute("paging", paging);
         model.addAttribute("kw", kw);
 
@@ -37,7 +37,7 @@ public class PostController {
 
     @GetMapping("/detail/{id}")
     public String detail(Model model, @PathVariable("id") Integer id, CommentDto commentDto) {
-        Post post = this.postService.findOne(id);
+        Post post = this.postService.getPost(id);
         model.addAttribute("post", post);
 
         return "post/detail";

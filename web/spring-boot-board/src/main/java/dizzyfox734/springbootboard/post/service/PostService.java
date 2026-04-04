@@ -16,10 +16,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
@@ -27,7 +27,8 @@ public class PostService {
 
     private final PostRepository postRepository;
 
-    public Page<Post> getList(int page, String kw) {
+    @Transactional(readOnly = true)
+    public Page<Post> findPosts(int page, String kw) {
         List<Sort.Order> sorts = new ArrayList<>();
         sorts.add(Sort.Order.desc("createdDate"));
         Pageable pageable = PageRequest.of(page, 10, Sort.by(sorts));
@@ -41,14 +42,10 @@ public class PostService {
      * @param id
      * @return
      */
-    public Post findOne(Integer id) {
-        Optional<Post> post = this.postRepository.findById(id);
-
-        if (post.isPresent()) {
-            return post.get();
-        } else {
-            throw new DataNotFoundException("Post not found");
-        }
+    @Transactional(readOnly = true)
+    public Post getPost(Integer id) {
+        return this.postRepository.findById(id)
+                .orElseThrow(() -> new DataNotFoundException("Post not found"));
     }
 
     /**
@@ -57,7 +54,8 @@ public class PostService {
      * @param content
      * @param member
      */
-    public void create(String title, String content, Member member) {
+    @Transactional
+    public Integer create(String title, String content, Member member) {
         validatePostInput(title, content);
 
         Post post = new Post();
@@ -65,6 +63,7 @@ public class PostService {
         post.setContent(content);
         post.setAuthor(member);
         this.postRepository.save(post);
+        return post.getId();
     }
 
     /**
@@ -74,14 +73,17 @@ public class PostService {
      * @param content
      * @param username
      */
-    public void modify(Integer postId, String title, String content, String username) {
+    @Transactional
+    public Integer modify(Integer postId, String title, String content, String username) {
         validatePostInput(title, content);
-        Post post = findOne(postId);
+        Post post = getPost(postId);
         validateAuthor(post, username);
 
         post.setTitle(title);
         post.setContent(content);
-        this.postRepository.save(post);
+        postRepository.save(post);
+
+        return post.getId();
     }
 
     /**
@@ -89,11 +91,13 @@ public class PostService {
      * @param postId
      * @param username
      */
-    public void delete(Integer postId, String username) {
-        Post post = findOne(postId);
+    @Transactional
+    public Integer delete(Integer postId, String username) {
+        Post post = getPost(postId);
         validateAuthor(post, username);
 
         this.postRepository.delete(post);
+        return post.getId();
     }
 
     /**
@@ -102,8 +106,9 @@ public class PostService {
      * @param username 수정을 요청하는 사용자의 username
      * @return post 수정하려는 포스트 반환
      */
+    @Transactional(readOnly = true)
     public Post getPostForModify(Integer postId, String username) {
-        Post post = findOne(postId);
+        Post post = getPost(postId);
         validateAuthor(post, username);
         return post;
     }
@@ -124,7 +129,6 @@ public class PostService {
                 return cb.or(cb.like(p.get("title"), "%" + kw + "%"),
                         cb.like(p.get("content"), "%" + kw + "%"),
                         cb.like(u1.get("username"), "%" + kw + "%"),
-                        cb.like(p.get("content"), "%" + kw + "%"),
                         cb.like(u2.get("username"), "%" + kw + "%"));
             }
         };
@@ -135,8 +139,8 @@ public class PostService {
             throw new IllegalStateException("Post has no author");
         }
 
-        if (username == null) {
-            throw new InvalidRequestException("Username is null");
+        if (username == null || username.isBlank()) {
+            throw new InvalidRequestException("Username is null or blank");
         }
 
         if (!post.getAuthor().getUsername().equals(username)) {

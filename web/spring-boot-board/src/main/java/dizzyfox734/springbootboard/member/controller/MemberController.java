@@ -161,7 +161,7 @@ public class MemberController {
     @PreAuthorize("isAnonymous")
     @PostMapping("/reset/pwd")
     public String resetPwd(@Valid FindPwdDto findPwdDto, RedirectAttributes redirectAttributes) {
-        boolean existEmail = memberService.existEmail(
+        boolean existEmail = memberService.existsForPasswordReset(
                 findPwdDto.getName(),
                 findPwdDto.getEmail(),
                 findPwdDto.getUsername()
