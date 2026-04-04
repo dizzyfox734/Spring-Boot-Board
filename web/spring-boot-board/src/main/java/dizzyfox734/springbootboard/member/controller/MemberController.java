@@ -38,7 +38,7 @@ public class MemberController {
     private final MemberService memberService;
     private final MailCertificationService mailCertificationService;
 
-    @PreAuthorize("isAnonymous")
+    @PreAuthorize("isAnonymous()")
     @GetMapping("/register")
     public String register(RegisterAgreementDto agreementDto) {
         return "member/register";
@@ -50,7 +50,7 @@ public class MemberController {
      * @param registerAgreementDto 이용약관 동의 DTO
      * @return 리다이렉트할 회원가입 페이지
      */
-    @PreAuthorize("isAnonymous")
+    @PreAuthorize("isAnonymous()")
     @PostMapping("/register")
     public String register(@Valid RegisterAgreementDto registerAgreementDto, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
@@ -60,7 +60,7 @@ public class MemberController {
         return "redirect:/member/signup";
     }
 
-    @PreAuthorize("isAnonymous")
+    @PreAuthorize("isAnonymous()")
     @GetMapping("/signup")
     public String signup(SignupDto signupDto) {
         return "member/signup";
@@ -73,7 +73,7 @@ public class MemberController {
      * @param bindingResult 검증 결과
      * @return 회원 가입 후 리다이렉트 경로
      */
-    @PreAuthorize("isAnonymous")
+    @PreAuthorize("isAnonymous()")
     @PostMapping("/signup")
     public String signup(@Valid SignupDto signupDto, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
@@ -102,7 +102,7 @@ public class MemberController {
      * @param map 이메일 정보
      * @return HTTP 응답 상태
      */
-    @PreAuthorize("isAnonymous")
+    @PreAuthorize("isAnonymous()")
     @PostMapping("/signup/sendMail")
     public ResponseEntity<Void> sendSignUpMail(@RequestBody Map<String, String> map) {
         String email = map.get("email");
@@ -114,13 +114,13 @@ public class MemberController {
         return CREATED;
     }
 
-    @PreAuthorize("isAnonymous")
+    @PreAuthorize("isAnonymous()")
     @GetMapping("/find/id")
     public String findId(FindIdDto findIdDto) {
         return "member/findId";
     }
 
-    @PreAuthorize("isAnonymous")
+    @PreAuthorize("isAnonymous()")
     @GetMapping("/find/pwd")
     public String findPwd(FindPwdDto findPwdDto) {
         return "member/findPwd";
@@ -134,7 +134,7 @@ public class MemberController {
      * @param redirectAttributes 리다이렉트 전달값
      * @return 결과 페이지
      */
-    @PreAuthorize("isAnonymous")
+    @PreAuthorize("isAnonymous()")
     @PostMapping("/find/id")
     public String findId(@Valid FindIdDto findIdDto, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
@@ -158,7 +158,7 @@ public class MemberController {
      * @param redirectAttributes 리다이렉트 전달값
      * @return 결과 페이지
      */
-    @PreAuthorize("isAnonymous")
+    @PreAuthorize("isAnonymous()")
     @PostMapping("/reset/pwd")
     public String resetPwd(@Valid FindPwdDto findPwdDto, RedirectAttributes redirectAttributes) {
         boolean existEmail = memberService.existsForPasswordReset(
@@ -186,7 +186,7 @@ public class MemberController {
         return "redirect:/member/login";
     }
 
-    @PreAuthorize("isAnonymous")
+    @PreAuthorize("isAnonymous()")
     @GetMapping("/login")
     public String login() {
         return "member/login";
