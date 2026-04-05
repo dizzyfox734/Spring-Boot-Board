@@ -14,7 +14,6 @@ import dizzyfox734.springbootboard.member.exception.AuthorityNotFoundException;
 import dizzyfox734.springbootboard.member.exception.DuplicateEmailException;
 import dizzyfox734.springbootboard.member.exception.DuplicateUsernameException;
 import dizzyfox734.springbootboard.member.exception.EmailVerificationException;
-import dizzyfox734.springbootboard.member.exception.PasswordMismatchException;
 import dizzyfox734.springbootboard.member.repository.AuthorityRepository;
 import dizzyfox734.springbootboard.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -119,35 +118,6 @@ class MemberServiceTest {
         assertNotNull(capturedMember.getAuthorities());
         assertEquals(1, capturedMember.getAuthorities().size());
         assertTrue(capturedMember.getAuthorities().contains(roleUser));
-    }
-
-    @Test
-    @DisplayName("create(): 비밀번호 확인이 일치하지 않으면 PasswordMismatchException이 발생한다")
-    void shouldThrowPasswordMismatchException_whenPasswordsDoNotMatch() {
-        // given
-        SignupDto dto = new SignupDto();
-        dto.setUsername("testuser");
-        dto.setPassword1("password123");
-        dto.setPassword2("wrongpassword123");
-        dto.setName("홍길동");
-        dto.setEmail("test@example.com");
-        dto.setEmailConfirm("123456");
-
-        // when
-        PasswordMismatchException exception = assertThrows(
-                PasswordMismatchException.class,
-                () -> memberService.create(dto)
-        );
-
-        // then
-        assertEquals("패스워드가 일치하지 않습니다.", exception.getMessage());
-
-        verify(memberRepository, never()).findOneWithAuthoritiesByUsername(anyString());
-        verify(memberRepository, never()).findOneWithAuthoritiesByEmail(anyString());
-        verify(mailCertificationService, never()).verifyEmailCertificationCode(anyString(), anyString());
-        verify(authorityRepository, never()).findById(anyString());
-        verify(passwordEncoder, never()).encode(anyString());
-        verify(memberRepository, never()).save(any(Member.class));
     }
 
     @Test

@@ -25,6 +25,8 @@ public class MemberService {
 
     private static final int TEMPORARY_PASSWORD_LENGTH = 8;
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String TEMPORARY_PASSWORD_CHARS =
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
@@ -54,8 +56,7 @@ public class MemberService {
                 .activated(true)
                 .build();
 
-        Member savedMember = memberRepository.save(member);
-        return savedMember.getId();
+        return memberRepository.save(member).getId();
     }
 
     /**
@@ -123,13 +124,12 @@ public class MemberService {
         Member member = memberRepository.findByNameAndEmailAndUsername(name, email, username)
                 .orElseThrow(() -> new DataNotFoundException("No user found with the provided name and email"));
 
-        String temporaryPwd = generateTemporaryPassword();
-        member.setPassword(passwordEncoder.encode(temporaryPwd));
+        String temporaryPassword = generateTemporaryPassword();
+        member.setPassword(passwordEncoder.encode(temporaryPassword));
         memberRepository.save(member);
 
-        mailService.sendTemporaryPasswordEmail(email, temporaryPwd);
-
-        return temporaryPwd;
+        mailService.sendTemporaryPasswordEmail(email, temporaryPassword);
+        return temporaryPassword;
     }
 
     /**
@@ -138,11 +138,10 @@ public class MemberService {
      * @return 생성된 임시 비밀번호
      */
     private String generateTemporaryPassword() {
-        String chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder password = new StringBuilder();
 
         for (int i = 0; i < TEMPORARY_PASSWORD_LENGTH; i++) {
-            password.append(chars.charAt(RANDOM.nextInt(chars.length())));
+            password.append(TEMPORARY_PASSWORD_CHARS.charAt(RANDOM.nextInt(TEMPORARY_PASSWORD_CHARS.length())));
         }
 
         return password.toString();
@@ -154,16 +153,9 @@ public class MemberService {
      * @param signupDto 회원 가입에 필요한 정보를 담은 DTO
      */
     private void validateSignup(SignupDto signupDto) {
-        validatePasswordMatch(signupDto);
         validateUsernameNotDuplicated(signupDto.getUsername());
         validateEmailNotDuplicated(signupDto.getEmail());
         validateEmailVerified(signupDto.getEmail(), signupDto.getEmailConfirm());
-    }
-
-    private void validatePasswordMatch(SignupDto signupDto) {
-        if (!signupDto.getPassword1().equals(signupDto.getPassword2())) {
-            throw new PasswordMismatchException("패스워드가 일치하지 않습니다.");
-        }
     }
 
     private void validateUsernameNotDuplicated(String username) {

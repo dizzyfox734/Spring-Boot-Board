@@ -45,9 +45,9 @@ public class CommentServiceTest {
                 .build();
     }
 
-    private Post createPost() {
+    private Post createPost(int postId) {
         Post post = new Post();
-        post.setId(1);
+        post.setId(postId);
         return post;
     }
 
@@ -65,7 +65,7 @@ public class CommentServiceTest {
     void shouldCreateAndSaveCommentAndReturnCommentId_whenValidPostContentAndAuthorAreGiven() {
         // given
         Member member = createMember();
-        Post post = createPost();
+        Post post = createPost(1);
 
         when(postService.getPost(1)).thenReturn(post);
         when(memberService.getMember("testuser")).thenReturn(member);
@@ -177,7 +177,7 @@ public class CommentServiceTest {
     @DisplayName("create(): 존재하지 않는 회원이면 예외가 발생한다")
     void shouldPropagateException_whenMemberDoesNotExistForCreate() {
         // given
-        Post post = createPost();
+        Post post = createPost(1);
 
         when(postService.getPost(1)).thenReturn(post);
         when(memberService.getMember("testuser"))
@@ -199,7 +199,7 @@ public class CommentServiceTest {
     void shouldReturnComment_whenCommentExists() {
         // given
         Member member = createMember();
-        Post post = createPost();
+        Post post = createPost(1);
         Comment comment = createComment(post, member);
 
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
@@ -233,7 +233,7 @@ public class CommentServiceTest {
     void shouldReturnCommentForModify_whenRequesterIsAuthor() {
         // given
         Member member = createMember();
-        Post post = createPost();
+        Post post = createPost(1);
         Comment comment = createComment(post, member);
 
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
@@ -302,7 +302,7 @@ public class CommentServiceTest {
     @DisplayName("getCommentForModify(): 댓글 작성자가 없으면 예외가 발생한다")
     void shouldThrowIllegalStateException_whenCommentHasNoAuthorForGetCommentForModify() {
         // given
-        Post post = createPost();
+        Post post = createPost(1);
         Comment comment = createComment(post, null);
 
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
@@ -323,7 +323,7 @@ public class CommentServiceTest {
         Member member = Member.builder()
                 .username("wronguser")
                 .build();
-        Post post = createPost();
+        Post post = createPost(1);
         Comment comment = createComment(post, member);
 
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
@@ -338,11 +338,11 @@ public class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("modify(): 작성자 본인이 요청하면 댓글 내용을 수정하고 저장한 뒤 댓글 ID를 반환한다")
-    void shouldModifyAndSaveCommentAndReturnCommentId_whenRequesterIsAuthor() {
+    @DisplayName("modify(): 작성자 본인이 요청하면 댓글 내용을 수정하고 저장한 뒤 게시글 ID를 반환한다")
+    void shouldModifyAndSaveCommentAndReturnPostId_whenRequesterIsAuthor() {
         // given
         Member member = createMember();
-        Post post = createPost();
+        Post post = createPost(100);
         Comment comment = createComment(post, member);
 
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
@@ -356,7 +356,7 @@ public class CommentServiceTest {
 
         // then
         assertNotNull(result);
-        assertEquals(1, result);
+        assertEquals(100, result);
         assertEquals("new content", comment.getContent());
 
         verify(commentRepository, times(1)).findById(1);
@@ -451,7 +451,7 @@ public class CommentServiceTest {
     @DisplayName("modify(): 댓글 작성자가 없으면 예외가 발생하고 저장하지 않는다")
     void shouldThrowIllegalStateExceptionAndNotSave_whenCommentHasNoAuthorForModify() {
         // given
-        Post post = createPost();
+        Post post = createPost(1);
         Comment comment = createComment(post, null);
 
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
@@ -471,7 +471,7 @@ public class CommentServiceTest {
     void shouldThrowAccessDeniedExceptionAndNotSave_whenRequesterIsNotAuthorForModify() {
         // given
         Member member = createMember();
-        Post post = createPost();
+        Post post = createPost(1);
         Comment comment = createComment(post, member);
 
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
@@ -491,7 +491,7 @@ public class CommentServiceTest {
     void shouldDeleteCommentAndReturnCommentId_whenRequesterIsAuthor() {
         // given
         Member member = createMember();
-        Post post = createPost();
+        Post post = createPost(1);
         Comment comment = createComment(post, member);
 
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
@@ -565,7 +565,7 @@ public class CommentServiceTest {
     @DisplayName("delete(): 댓글 작성자가 없으면 예외가 발생하고 삭제하지 않는다")
     void shouldThrowIllegalStateExceptionAndNotDelete_whenCommentHasNoAuthorForDelete() {
         // given
-        Post post = createPost();
+        Post post = createPost(1);
         Comment comment = createComment(post, null);
 
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
@@ -585,7 +585,7 @@ public class CommentServiceTest {
     void shouldThrowAccessDeniedExceptionAndNotDelete_whenRequesterIsNotAuthorForDelete() {
         // given
         Member member = createMember();
-        Post post = createPost();
+        Post post = createPost(1);
         Comment comment = createComment(post, member);
 
         when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
@@ -598,5 +598,20 @@ public class CommentServiceTest {
         assertEquals("작성자만 접근할 수 있습니다.", exception.getMessage());
         verify(commentRepository, times(1)).findById(1);
         verify(commentRepository, never()).delete(any(Comment.class));
+    }
+
+    @Test
+    @DisplayName("getPostIdByCommentId(): 댓글 ID로 게시글 ID를 반환한다")
+    void shouldReturnPostId_whenCommentExistsForGetPostIdByCommentId() {
+        Member member = createMember();
+        Post post = createPost(100);
+        Comment comment = createComment(post, member);
+
+        when(commentRepository.findById(1)).thenReturn(Optional.of(comment));
+
+        Integer result = commentService.getPostIdByCommentId(1);
+
+        assertEquals(100, result);
+        verify(commentRepository).findById(1);
     }
 }

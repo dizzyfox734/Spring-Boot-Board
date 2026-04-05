@@ -31,20 +31,18 @@ public class PostService {
     public Page<Post> findPosts(int page, String kw) {
         List<Sort.Order> sorts = new ArrayList<>();
         sorts.add(Sort.Order.desc("createdDate"));
+
         Pageable pageable = PageRequest.of(page, 10, Sort.by(sorts));
         Specification<Post> spec = search(kw);
 
-        return this.postRepository.findAll(spec, pageable);
+        return postRepository.findAll(spec, pageable);
     }
 
-    /**
-     *
-     * @param id
-     * @return
-     */
     @Transactional(readOnly = true)
-    public Post getPost(Integer id) {
-        return this.postRepository.findById(id)
+    public Post getPost(Integer postId) {
+        validatePostId(postId);
+
+        return postRepository.findById(postId)
                 .orElseThrow(() -> new DataNotFoundException("Post not found"));
     }
 
@@ -53,6 +51,7 @@ public class PostService {
      * @param title
      * @param content
      * @param member
+     * @return 생성한 포스트 id
      */
     @Transactional
     public Integer create(String title, String content, Member member) {
@@ -62,8 +61,8 @@ public class PostService {
         post.setTitle(title);
         post.setContent(content);
         post.setAuthor(member);
-        this.postRepository.save(post);
-        return post.getId();
+
+        return postRepository.save(post).getId();
     }
 
     /**
@@ -72,31 +71,36 @@ public class PostService {
      * @param title
      * @param content
      * @param username
+     * @return 수정한 포스트 id
      */
     @Transactional
     public Integer modify(Integer postId, String title, String content, String username) {
+        validatePostId(postId);
         validatePostInput(title, content);
+
         Post post = getPost(postId);
         validateAuthor(post, username);
 
         post.setTitle(title);
         post.setContent(content);
-        postRepository.save(post);
 
-        return post.getId();
+        return postRepository.save(post).getId();
     }
 
     /**
      * 포스트 삭제
      * @param postId
      * @param username
+     * @return 삭제한 포스트 id
      */
     @Transactional
     public Integer delete(Integer postId, String username) {
+        validatePostId(postId);
+
         Post post = getPost(postId);
         validateAuthor(post, username);
 
-        this.postRepository.delete(post);
+        postRepository.delete(post);
         return post.getId();
     }
 
@@ -108,6 +112,8 @@ public class PostService {
      */
     @Transactional(readOnly = true)
     public Post getPostForModify(Integer postId, String username) {
+        validatePostId(postId);
+
         Post post = getPost(postId);
         validateAuthor(post, username);
         return post;
@@ -115,23 +121,37 @@ public class PostService {
 
     /**
      * 검색
+     * @param kw
+     * @return
      */
     private Specification<Post> search(String kw) {
         return new Specification<>() {
             private static final long serialVersionUID = 1L;
-            @Override
-            public Predicate toPredicate(Root<Post> p, CriteriaQuery<?> query, CriteriaBuilder cb) {
-                query.distinct(true);  // 중복 제거
-                Join<Post, Member> u1 = p.join("author", JoinType.LEFT);
-                Join<Post, Comment> c = p.join("commentList", JoinType.LEFT);
-                Join<Comment, Member> u2 = c.join("author", JoinType.LEFT);
 
-                return cb.or(cb.like(p.get("title"), "%" + kw + "%"),
-                        cb.like(p.get("content"), "%" + kw + "%"),
-                        cb.like(u1.get("username"), "%" + kw + "%"),
-                        cb.like(u2.get("username"), "%" + kw + "%"));
+            @Override
+            public Predicate toPredicate(Root<Post> post,
+                                         CriteriaQuery<?> query,
+                                         CriteriaBuilder cb) {
+                query.distinct(true);
+
+                Join<Post, Member> author = post.join("author", JoinType.LEFT);
+                Join<Post, Comment> comment = post.join("commentList", JoinType.LEFT);
+                Join<Comment, Member> commentAuthor = comment.join("author", JoinType.LEFT);
+
+                return cb.or(
+                        cb.like(post.get("title"), "%" + kw + "%"),
+                        cb.like(post.get("content"), "%" + kw + "%"),
+                        cb.like(author.get("username"), "%" + kw + "%"),
+                        cb.like(commentAuthor.get("username"), "%" + kw + "%")
+                );
             }
         };
+    }
+
+    private void validatePostId(Integer postId) {
+        if (postId == null) {
+            throw new InvalidRequestException("Post id is null");
+        }
     }
 
     private void validateAuthor(Post post, String username) {
@@ -152,6 +172,7 @@ public class PostService {
         if (title == null || title.isBlank()) {
             throw new InvalidInputException("제목은 필수항목입니다.");
         }
+
         if (content == null || content.isBlank()) {
             throw new InvalidInputException("내용은 필수항목입니다.");
         }

@@ -26,18 +26,21 @@ public class PostController {
     private final MemberService memberService;
 
     @GetMapping("/list")
-    public String list(Model model, @RequestParam(value="page", defaultValue="0") int page,
+    public String list(Model model,
+                       @RequestParam(value = "page", defaultValue = "0") int page,
                        @RequestParam(value = "kw", defaultValue = "") String kw) {
-        Page<Post> paging = this.postService.findPosts(page, kw);
+        Page<Post> paging = postService.findPosts(page, kw);
         model.addAttribute("paging", paging);
         model.addAttribute("kw", kw);
 
         return "post/list";
     }
 
-    @GetMapping("/detail/{id}")
-    public String detail(Model model, @PathVariable("id") Integer id, CommentDto commentDto) {
-        Post post = this.postService.getPost(id);
+    @GetMapping("/detail/{postId}")
+    public String detail(Model model,
+                         @PathVariable("postId") Integer postId,
+                         CommentDto commentDto) {
+        Post post = postService.getPost(postId);
         model.addAttribute("post", post);
 
         return "post/detail";
@@ -55,21 +58,28 @@ public class PostController {
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/create")
-    public String create(@Valid PostDto postDto, BindingResult bindingResult, Principal principal) {
+    public String create(@Valid PostDto postDto,
+                         BindingResult bindingResult,
+                         Principal principal,
+                         Model model) {
         if (bindingResult.hasErrors()) {
+            model.addAttribute("isModify", false);
             return "post/form";
         }
-        Member member = this.memberService.getMember(principal.getName());
-        this.postService.create(postDto.getTitle(), postDto.getContent(), member);
+
+        Member member = memberService.getMember(principal.getName());
+        postService.create(postDto.getTitle(), postDto.getContent(), member);
 
         return "redirect:/post/list";
     }
 
     @PreAuthorize("isAuthenticated()")
-    @GetMapping("/modify/{id}")
-    public String modify(PostDto postDto, @PathVariable("id") Integer id,
-                         Principal principal, Model model) {
-        Post post = this.postService.getPostForModify(id, principal.getName());
+    @GetMapping("/modify/{postId}")
+    public String modify(PostDto postDto,
+                         @PathVariable("postId") Integer postId,
+                         Principal principal,
+                         Model model) {
+        Post post = postService.getPostForModify(postId, principal.getName());
         postDto.setTitle(post.getTitle());
         postDto.setContent(post.getContent());
         model.addAttribute("isModify", true);
@@ -80,24 +90,29 @@ public class PostController {
      * 포스트 수정
      */
     @PreAuthorize("isAuthenticated()")
-    @PostMapping("/modify/{id}")
-    public String modify(@Valid PostDto postDto, BindingResult bindingResult,
-                                 Principal principal, @PathVariable("id") Integer id) {
+    @PostMapping("/modify/{postId}")
+    public String modify(@Valid PostDto postDto,
+                         BindingResult bindingResult,
+                         Principal principal,
+                         @PathVariable("postId") Integer postId,
+                         Model model) {
         if (bindingResult.hasErrors()) {
+            model.addAttribute("isModify", true);
             return "post/form";
         }
 
-        this.postService.modify(id, postDto.getTitle(), postDto.getContent(), principal.getName());
-        return String.format("redirect:/post/detail/%s", id);
+        postService.modify(postId, postDto.getTitle(), postDto.getContent(), principal.getName());
+        return String.format("redirect:/post/detail/%s", postId);
     }
 
     /**
      * 포스트 삭제
      */
     @PreAuthorize("isAuthenticated()")
-    @PostMapping("/delete/{id}")
-    public String delete(Principal principal, @PathVariable("id") Integer id) {
-        this.postService.delete(id, principal.getName());
+    @PostMapping("/delete/{postId}")
+    public String delete(Principal principal,
+                         @PathVariable("postId") Integer postId) {
+        postService.delete(postId, principal.getName());
 
         return "redirect:/post/list";
     }

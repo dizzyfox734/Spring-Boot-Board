@@ -9,7 +9,6 @@ import dizzyfox734.springbootboard.member.domain.Member;
 import dizzyfox734.springbootboard.member.exception.DuplicateEmailException;
 import dizzyfox734.springbootboard.member.exception.DuplicateUsernameException;
 import dizzyfox734.springbootboard.member.exception.EmailVerificationException;
-import dizzyfox734.springbootboard.member.exception.PasswordMismatchException;
 import dizzyfox734.springbootboard.member.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,9 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
-import java.util.Map;
 
-import static dizzyfox734.springbootboard.global.utils.constants.ResponseConstants.BAD_REQUEST;
 import static dizzyfox734.springbootboard.global.utils.constants.ResponseConstants.CREATED;
 
 @RequestMapping("/member")
@@ -40,7 +37,7 @@ public class MemberController {
 
     @PreAuthorize("isAnonymous()")
     @GetMapping("/register")
-    public String register(RegisterAgreementDto agreementDto) {
+    public String register(RegisterAgreementDto registerAgreementDto) {
         return "member/register";
     }
 
@@ -52,7 +49,8 @@ public class MemberController {
      */
     @PreAuthorize("isAnonymous()")
     @PostMapping("/register")
-    public String register(@Valid RegisterAgreementDto registerAgreementDto, BindingResult bindingResult) {
+    public String register(@Valid RegisterAgreementDto registerAgreementDto,
+                           BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return "member/register";
         }
@@ -82,9 +80,6 @@ public class MemberController {
 
         try {
             memberService.create(signupDto);
-        } catch (PasswordMismatchException e) {
-            bindingResult.rejectValue("password2", "passwordInCorrect", e.getMessage());
-            return "member/signup";
         } catch (DuplicateUsernameException e) {
             bindingResult.rejectValue("username", "duplicate", e.getMessage());
             return "member/signup";
@@ -102,19 +97,14 @@ public class MemberController {
     /**
      * 회원 가입용 이메일 인증코드 전송
      *
-     * @param map 이메일 정보
+     * @param request 이메일 정보
      * @return HTTP 응답 상태
      */
     @PreAuthorize("isAnonymous()")
     @PostMapping("/signup/sendMail")
-    public ResponseEntity<Void> sendSignUpMail(@RequestBody Map<String, String> map) {
-        String email = map.get("email");
-        if (email == null || email.isBlank()) {
-            return BAD_REQUEST;
-        }
-
+    public ResponseEntity<Void> sendSignUpMail(@Valid @RequestBody EmailRequest request) {
         try {
-            mailCertificationService.sendSignupVerificationCode(email);
+            mailCertificationService.sendSignupVerificationCode(request.getEmail());
             return CREATED;
         } catch (RuntimeException e) {
             return ResponseEntity.internalServerError().build();
@@ -127,12 +117,6 @@ public class MemberController {
         return "member/findId";
     }
 
-    @PreAuthorize("isAnonymous()")
-    @GetMapping("/find/pwd")
-    public String findPwd(FindPwdDto findPwdDto) {
-        return "member/findPwd";
-    }
-
     /**
      * 아이디 찾기 요청 처리
      *
@@ -143,7 +127,9 @@ public class MemberController {
      */
     @PreAuthorize("isAnonymous()")
     @PostMapping("/find/id")
-    public String findId(@Valid FindIdDto findIdDto, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
+    public String findId(@Valid FindIdDto findIdDto,
+                         BindingResult bindingResult,
+                         RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             return "member/findId";
         }
@@ -158,6 +144,12 @@ public class MemberController {
         }
     }
 
+    @PreAuthorize("isAnonymous()")
+    @GetMapping("/find/pwd")
+    public String findPwd(FindPwdDto findPwdDto) {
+        return "member/findPwd";
+    }
+
     /**
      * 비밀번호 찾기 요청 처리
      *
@@ -167,18 +159,20 @@ public class MemberController {
      */
     @PreAuthorize("isAnonymous()")
     @PostMapping("/reset/pwd")
-    public String resetPwd(@Valid FindPwdDto findPwdDto, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
+    public String resetPwd(@Valid FindPwdDto findPwdDto,
+                           BindingResult bindingResult,
+                           RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             return "member/findPwd";
         }
 
-        boolean existEmail = memberService.existsForPasswordReset(
+        boolean existsMember = memberService.existsForPasswordReset(
                 findPwdDto.getName(),
                 findPwdDto.getEmail(),
                 findPwdDto.getUsername()
         );
 
-        if (!existEmail) {
+        if (!existsMember) {
             redirectAttributes.addAttribute("error", "해당 정보로 회원을 찾을 수 없습니다.");
             return "redirect:/member/find/pwd";
         }
@@ -221,13 +215,12 @@ public class MemberController {
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/modify")
-    public String update(@Valid MemberModifyDto memberModifyDto, BindingResult bindingResult, Principal principal) {
+    public String update(@Valid MemberModifyDto memberModifyDto,
+                         BindingResult bindingResult,
+                         Principal principal,
+                         Model model) {
         if (bindingResult.hasErrors()) {
-            return "member/info";
-        }
-
-        if (!memberModifyDto.getPassword1().equals(memberModifyDto.getPassword2())) {
-            bindingResult.rejectValue("password2", "passwordInCorrect", "패스워드가 일치하지 않습니다.");
+            model.addAttribute("username", principal.getName());
             return "member/info";
         }
 

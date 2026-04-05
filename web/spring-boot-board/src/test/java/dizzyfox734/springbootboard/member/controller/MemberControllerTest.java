@@ -10,7 +10,6 @@ import dizzyfox734.springbootboard.member.domain.Member;
 import dizzyfox734.springbootboard.member.exception.DuplicateEmailException;
 import dizzyfox734.springbootboard.member.exception.DuplicateUsernameException;
 import dizzyfox734.springbootboard.member.exception.EmailVerificationException;
-import dizzyfox734.springbootboard.member.exception.PasswordMismatchException;
 import dizzyfox734.springbootboard.member.service.MemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -210,22 +209,21 @@ class MemberControllerTest {
 
         @Test
         @WithAnonymousUser
-        @DisplayName("비밀번호 확인 불일치 예외가 발생하면 password2 필드 에러와 함께 회원가입 페이지를 보여준다")
-        void returnSignupPageWithPassword2Error_whenPasswordMismatchExceptionOccurs() throws Exception {
-            given(memberService.create(any(SignupDto.class)))
-                    .willThrow(new PasswordMismatchException("패스워드가 일치하지 않습니다."));
-
+        @DisplayName("비밀번호 확인이 일치하지 않으면 DTO 검증으로 password2 필드 에러와 함께 회원가입 페이지를 보여준다")
+        void returnSignupPageWithPassword2Error_whenPasswordsDoNotMatch() throws Exception {
             mockMvc.perform(post("/member/signup")
                             .with(csrf())
                             .param("username", "testuser")
                             .param("password1", "password123")
-                            .param("password2", "password123")
+                            .param("password2", "differentPassword123")
                             .param("name", "홍길동")
                             .param("email", "test@example.com")
                             .param("emailConfirm", "A1B2C3D4"))
                     .andExpect(status().isOk())
                     .andExpect(view().name("member/signup"))
                     .andExpect(model().attributeHasFieldErrors("signupDto", "password2"));
+
+            then(memberService).should(never()).create(any(SignupDto.class));
         }
 
         @Test

@@ -14,8 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
 @RequiredArgsConstructor
 @Service
 public class CommentService {
@@ -30,21 +28,22 @@ public class CommentService {
         validateUsername(username);
         validateCommentInput(content);
 
-        Post post = this.postService.getPost(postId);
-        Member author = this.memberService.getMember(username);
+        Post post = postService.getPost(postId);
+        Member author = memberService.getMember(username);
 
         Comment comment = new Comment();
         comment.setContent(content);
         comment.setPost(post);
         comment.setAuthor(author);
-        this.commentRepository.save(comment);
 
-        return comment.getId();
+        return commentRepository.save(comment).getId();
     }
 
     @Transactional(readOnly = true)
-    public Comment getComment(Integer id) {
-        return this.commentRepository.findById(id)
+    public Comment getComment(Integer commentId) {
+        validateCommentId(commentId);
+
+        return commentRepository.findById(commentId)
                 .orElseThrow(() -> new DataNotFoundException("comment not found"));
     }
 
@@ -68,8 +67,9 @@ public class CommentService {
         validateAuthor(comment, username);
 
         comment.setContent(content);
-        this.commentRepository.save(comment);
-        return comment.getId();
+        commentRepository.save(comment);
+
+        return comment.getPost().getId();
     }
 
     @Transactional
@@ -80,8 +80,13 @@ public class CommentService {
         Comment comment = getComment(commentId);
         validateAuthor(comment, username);
 
-        this.commentRepository.delete(comment);
+        commentRepository.delete(comment);
         return comment.getId();
+    }
+
+    @Transactional(readOnly = true)
+    public Integer getPostIdByCommentId(Integer commentId) {
+        return getComment(commentId).getPost().getId();
     }
 
     private void validateAuthor(Comment comment, String username) {
