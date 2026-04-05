@@ -85,8 +85,11 @@ public class MemberController {
         } catch (PasswordMismatchException e) {
             bindingResult.rejectValue("password2", "passwordInCorrect", e.getMessage());
             return "member/signup";
-        } catch (DuplicateUsernameException | DuplicateEmailException e) {
-            bindingResult.reject("signupFailed", e.getMessage());
+        } catch (DuplicateUsernameException e) {
+            bindingResult.rejectValue("username", "duplicate", e.getMessage());
+            return "member/signup";
+        } catch (DuplicateEmailException e) {
+            bindingResult.rejectValue("email", "duplicate", e.getMessage());
             return "member/signup";
         } catch (EmailVerificationException e) {
             bindingResult.rejectValue("emailConfirm", "emailConfirmInCorrect", e.getMessage());
@@ -110,8 +113,12 @@ public class MemberController {
             return BAD_REQUEST;
         }
 
-        mailCertificationService.sendSignupVerificationCode(email);
-        return CREATED;
+        try {
+            mailCertificationService.sendSignupVerificationCode(email);
+            return CREATED;
+        } catch (RuntimeException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @PreAuthorize("isAnonymous()")
@@ -138,7 +145,7 @@ public class MemberController {
     @PostMapping("/find/id")
     public String findId(@Valid FindIdDto findIdDto, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
-            return "member/find/id";
+            return "member/findId";
         }
 
         try {
@@ -160,7 +167,11 @@ public class MemberController {
      */
     @PreAuthorize("isAnonymous()")
     @PostMapping("/reset/pwd")
-    public String resetPwd(@Valid FindPwdDto findPwdDto, RedirectAttributes redirectAttributes) {
+    public String resetPwd(@Valid FindPwdDto findPwdDto, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) {
+            return "member/findPwd";
+        }
+
         boolean existEmail = memberService.existsForPasswordReset(
                 findPwdDto.getName(),
                 findPwdDto.getEmail(),
@@ -168,7 +179,7 @@ public class MemberController {
         );
 
         if (!existEmail) {
-            redirectAttributes.addAttribute("error", "해당 정보로 회원를 찾을 수 없습니다.");
+            redirectAttributes.addAttribute("error", "해당 정보로 회원을 찾을 수 없습니다.");
             return "redirect:/member/find/pwd";
         }
 

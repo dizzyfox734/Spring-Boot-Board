@@ -7,7 +7,7 @@
         </div>
     </div>
     <form th:action="@{/member/register}" th:object="${registerAgreementDto}" method="post" id="fregister" autocomplete="off">
-        <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+        <input type="hidden"  th:name="${_csrf.parameterName}"  th:value="${_csrf.token}"/>
         <p>회원가입약관 및 개인정보처리방침안내의 내용에 동의하셔야 회원가입 하실 수 있습니다.</p>
 
         <section id="fregister_term">
@@ -39,8 +39,8 @@
 부 칙
 (시행일) 이 약관은 2025년 10월 21일부터 시행합니다.</textarea>
             <fieldset class="fregister_agree">
-                <label for="agree1">회원가입약관의 내용에 동의합니다.</label>
-                <input type="checkbox" th:field="*{agree1}" id="agree1">
+                <label for="agreeTermsOfService">회원가입약관의 내용에 동의합니다.</label>
+                <input type="checkbox" th:field="*{agreeTermsOfService}" id="agreeTermsOfService">
             </fieldset>
         </section>
 
@@ -71,8 +71,8 @@
                 </table>
             </div>
             <fieldset class="fregister_agree">
-                <label for="agree2">개인정보처리방침안내의 내용에 동의합니다.</label>
-                <input type="checkbox" th:field="*{agree2}" id="agree2">
+                <label for="agreePrivacyPolicy">개인정보처리방침안내의 내용에 동의합니다.</label>
+                <input type="checkbox" th:field="*{agreePrivacyPolicy}" id="agreePrivacyPolicy">
             </fieldset>
         </section>
     </form>

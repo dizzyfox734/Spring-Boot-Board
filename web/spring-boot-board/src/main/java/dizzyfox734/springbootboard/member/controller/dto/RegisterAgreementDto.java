@@ -9,9 +9,9 @@ import lombok.Setter;
 public class RegisterAgreementDto {
 
     @AssertTrue(message = "회원가입약관에 동의해야 합니다.")
-    private boolean agree1;
+    private boolean agreeTermsOfService;
 
     @AssertTrue(message = "개인정보처리방침에 동의해야 합니다.")
-    private boolean agree2;
+    private boolean agreePrivacyPolicy;
 }
 
