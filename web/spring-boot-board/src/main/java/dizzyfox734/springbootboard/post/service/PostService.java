@@ -3,7 +3,6 @@ package dizzyfox734.springbootboard.post.service;
 import dizzyfox734.springbootboard.comment.domain.Comment;
 import dizzyfox734.springbootboard.global.exception.AccessDeniedException;
 import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
-import dizzyfox734.springbootboard.global.exception.InvalidInputException;
 import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.member.domain.Member;
 import dizzyfox734.springbootboard.post.domain.Post;
@@ -55,12 +54,7 @@ public class PostService {
      */
     @Transactional
     public Integer create(String title, String content, Member member) {
-        validatePostInput(title, content);
-
-        Post post = new Post();
-        post.setTitle(title);
-        post.setContent(content);
-        post.setAuthor(member);
+        Post post = Post.create(title, content, member);
 
         return postRepository.save(post).getId();
     }
@@ -76,13 +70,11 @@ public class PostService {
     @Transactional
     public Integer modify(Integer postId, String title, String content, String username) {
         validatePostId(postId);
-        validatePostInput(title, content);
 
         Post post = getPost(postId);
         validateAuthor(post, username);
 
-        post.setTitle(title);
-        post.setContent(content);
+        post.edit(title, content);
 
         return postRepository.save(post).getId();
     }
@@ -163,18 +155,8 @@ public class PostService {
             throw new InvalidRequestException("Username is null or blank");
         }
 
-        if (!post.getAuthor().getUsername().equals(username)) {
+        if (!post.isWrittenBy(username)) {
             throw new AccessDeniedException("작성자만 접근할 수 있습니다.");
-        }
-    }
-
-    private void validatePostInput(String title, String content) {
-        if (title == null || title.isBlank()) {
-            throw new InvalidInputException("제목은 필수항목입니다.");
-        }
-
-        if (content == null || content.isBlank()) {
-            throw new InvalidInputException("내용은 필수항목입니다.");
         }
     }
 }

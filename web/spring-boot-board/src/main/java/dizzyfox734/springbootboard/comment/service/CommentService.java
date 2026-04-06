@@ -4,7 +4,6 @@ import dizzyfox734.springbootboard.comment.domain.Comment;
 import dizzyfox734.springbootboard.comment.repository.CommentRepository;
 import dizzyfox734.springbootboard.global.exception.AccessDeniedException;
 import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
-import dizzyfox734.springbootboard.global.exception.InvalidInputException;
 import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.member.domain.Member;
 import dizzyfox734.springbootboard.member.service.MemberService;
@@ -26,15 +25,11 @@ public class CommentService {
     public Integer create(Integer postId, String content, String username) {
         validatePostId(postId);
         validateUsername(username);
-        validateCommentInput(content);
 
         Post post = postService.getPost(postId);
         Member author = memberService.getMember(username);
 
-        Comment comment = new Comment();
-        comment.setContent(content);
-        comment.setPost(post);
-        comment.setAuthor(author);
+        Comment comment = Comment.create(content, post, author);
 
         return commentRepository.save(comment).getId();
     }
@@ -61,12 +56,11 @@ public class CommentService {
     public Integer modify(Integer commentId, String content, String username) {
         validateCommentId(commentId);
         validateUsername(username);
-        validateCommentInput(content);
 
         Comment comment = getComment(commentId);
         validateAuthor(comment, username);
 
-        comment.setContent(content);
+        comment.edit(content);
         commentRepository.save(comment);
 
         return comment.getPost().getId();
@@ -81,7 +75,7 @@ public class CommentService {
         validateAuthor(comment, username);
 
         commentRepository.delete(comment);
-        return comment.getId();
+        return comment.getPost().getId();
     }
 
     @Transactional(readOnly = true)
@@ -94,7 +88,7 @@ public class CommentService {
             throw new IllegalStateException("Comment has no author");
         }
 
-        if (!comment.getAuthor().getUsername().equals(username)) {
+        if (!comment.isWrittenBy(username)) {
             throw new AccessDeniedException("작성자만 접근할 수 있습니다.");
         }
     }
@@ -114,12 +108,6 @@ public class CommentService {
     private void validateUsername(String username) {
         if (username == null || username.isBlank()) {
             throw new InvalidRequestException("Username is null or blank");
-        }
-    }
-
-    private void validateCommentInput(String content) {
-        if (content == null || content.isBlank()) {
-            throw new InvalidInputException("내용은 필수항목입니다.");
         }
     }
 }

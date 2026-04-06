@@ -47,14 +47,13 @@ public class MemberService {
         Authority authority = authorityRepository.findById("ROLE_USER")
                 .orElseThrow(() -> new AuthorityNotFoundException("ROLE_USER 권한이 존재하지 않습니다."));
 
-        Member member = Member.builder()
-                .username(signupDto.getUsername())
-                .password(passwordEncoder.encode(signupDto.getPassword1()))
-                .name(signupDto.getName())
-                .email(signupDto.getEmail())
-                .authorities(Collections.singleton(authority))
-                .activated(true)
-                .build();
+        Member member = Member.create(
+                signupDto.getUsername(),
+                passwordEncoder.encode(signupDto.getPassword1()),
+                signupDto.getName(),
+                signupDto.getEmail(),
+                Collections.singleton(authority)
+        );
 
         return memberRepository.save(member).getId();
     }
@@ -68,7 +67,7 @@ public class MemberService {
      */
     @Transactional
     public Long modify(Member member, String password) {
-        member.setPassword(passwordEncoder.encode(password));
+        member.changeEncodedPassword(passwordEncoder.encode(password));
         memberRepository.save(member);
         return member.getId();
     }
@@ -125,7 +124,7 @@ public class MemberService {
                 .orElseThrow(() -> new DataNotFoundException("No user found with the provided name and email"));
 
         String temporaryPassword = generateTemporaryPassword();
-        member.setPassword(passwordEncoder.encode(temporaryPassword));
+        member.changeEncodedPassword(passwordEncoder.encode(temporaryPassword));
         memberRepository.save(member);
 
         mailService.sendTemporaryPasswordEmail(email, temporaryPassword);

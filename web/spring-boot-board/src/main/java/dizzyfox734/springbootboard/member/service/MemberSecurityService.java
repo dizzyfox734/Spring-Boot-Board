@@ -30,10 +30,6 @@ public class MemberSecurityService implements UserDetailsService {
     }
 
     private org.springframework.security.core.userdetails.User createMember(String username, Member member) {
-        if (!member.isActivated()) {
-            throw new RuntimeException(username + " -> 활성화되어 있지 않습니다.");
-        }
-
         List<GrantedAuthority> grantedAuthorities = member.getAuthorities().stream()
                 .map(authority -> new SimpleGrantedAuthority(authority.getName()))
                 .collect(Collectors.toList());
