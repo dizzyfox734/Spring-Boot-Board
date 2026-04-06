@@ -73,7 +73,7 @@ class MemberControllerTest {
                                     "/member/reset/pwd",
                                     "/member/signup/sendMail"
                             ).anonymous()
-                            .anyRequest().authenticated()
+                                    .anyRequest().authenticated()
                     )
                     .formLogin(form -> form.disable());
 
@@ -505,6 +505,9 @@ class MemberControllerTest {
                             .param("email", "test@example.com"))
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrl("/member/login"));
+
+            then(memberService).should().existsForPasswordReset("홍길동", "test@example.com", "testuser");
+            then(memberService).should().resetPasswordAndSendEmail("홍길동", "test@example.com", "testuser");
         }
 
         @Test
@@ -521,6 +524,9 @@ class MemberControllerTest {
                             .param("email", "test@example.com"))
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
+
+            then(memberService).should().existsForPasswordReset("홍길동", "test@example.com", "testuser");
+            then(memberService).should(never()).resetPasswordAndSendEmail(anyString(), anyString(), anyString());
         }
 
         @Test
@@ -539,6 +545,9 @@ class MemberControllerTest {
                             .param("email", "test@example.com"))
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
+
+            then(memberService).should().existsForPasswordReset("홍길동", "test@example.com", "testuser");
+            then(memberService).should().resetPasswordAndSendEmail("홍길동", "test@example.com", "testuser");
         }
 
         @Test
@@ -557,6 +566,9 @@ class MemberControllerTest {
                             .param("email", "test@example.com"))
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
+
+            then(memberService).should().existsForPasswordReset("홍길동", "test@example.com", "testuser");
+            then(memberService).should().resetPasswordAndSendEmail("홍길동", "test@example.com", "testuser");
         }
 
         @Test
@@ -568,6 +580,9 @@ class MemberControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(view().name("member/findPwd"))
                     .andExpect(model().hasErrors());
+
+            then(memberService).should(never()).existsForPasswordReset(anyString(), anyString(), anyString());
+            then(memberService).should(never()).resetPasswordAndSendEmail(anyString(), anyString(), anyString());
         }
 
         @Test
