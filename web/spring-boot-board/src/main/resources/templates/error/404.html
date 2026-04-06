@@ -1,0 +1,29 @@
+<html layout:decorate="~{layout}">
+
+<div layout:fragment="content" class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-5 text-center">
+                    <span class="badge bg-secondary mb-3">404 Not Found</span>
+                    <h1 class="display-6 fw-bold mb-3">페이지를 찾을 수 없습니다</h1>
+                    <p class="text-muted mb-4">
+                        요청하신 페이지가 없거나 이미 삭제되었습니다. 주소를 다시 확인해 주세요.
+                    </p>
+
+                    <div class="alert alert-secondary text-start mb-4" th:if="${errorMessage != null and !#strings.isEmpty(errorMessage)}">
+                        <strong>상세 메시지</strong>
+                        <div class="mt-2" th:text="${errorMessage}"></div>
+                    </div>
+
+                    <div class="d-flex justify-content-center gap-2">
+                        <a th:href="@{/}" class="btn btn-primary">메인으로</a>
+                        <a th:href="@{/post/list}" class="btn btn-outline-secondary">게시글 목록</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</html>
