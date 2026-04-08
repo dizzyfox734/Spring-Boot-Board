@@ -36,9 +36,8 @@ public class CommentController {
                          @Valid CommentDto commentDto,
                          BindingResult bindingResult,
                          Principal principal) {
-        Post post = postService.getPost(postId);
-
         if (bindingResult.hasErrors()) {
+            Post post = postService.getPost(postId);
             model.addAttribute("post", post);
             return "post/detail";
         }
