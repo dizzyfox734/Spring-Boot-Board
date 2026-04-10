@@ -8,11 +8,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class MarkdownUtil {
 
+    private final Parser parser = Parser.builder().build();
+    private final HtmlRenderer renderer = HtmlRenderer.builder()
+            .escapeHtml(true)
+            .build();
+
     public String markdown(String markdown) {
-        Parser parser = Parser.builder().build();
         Node document = parser.parse(markdown);
-        HtmlRenderer renderer = HtmlRenderer.builder().build();
         return renderer.render(document);
     }
-
 }
