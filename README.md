@@ -1,241 +1,210 @@
 # Spring Boot Board
 
-Spring Boot 기반으로 구현한 게시판 웹 애플리케이션입니다.
-게시글, 댓글, 회원 관리 기능을 포함하며 Spring Security 기반 인증 기능과 이메일 인증 기능을 구현했습니다.
+Spring Boot 기반 게시판 웹 애플리케이션입니다. 게시글, 댓글, 회원 기능을 단순 구현하는 데서 끝내지 않고, 인증/인가, 이메일 인증, Redis 기반 인증코드 저장, 예외 처리, 테스트, Docker 배포 구성을 함께 다룬 포트폴리오 프로젝트입니다.
 
-Docker Compose를 이용하여 **Spring Boot 애플리케이션과 Redis를 컨테이너 환경에서 실행**할 수 있도록 구성했습니다.
+## 프로젝트 목표
 
----
+- Spring MVC, Thymeleaf, Spring Data JPA를 사용한 서버 사이드 렌더링 게시판 구현
+- Spring Security 기반 로그인/로그아웃, 권한별 접근 제어, 비밀번호 암호화 적용
+- 회원가입 이메일 인증코드를 Redis에 TTL 기반으로 저장하고 검증
+- 게시글/댓글 작성자 검증, 입력값 검증, 도메인 예외 처리를 서비스 계층에 반영
+- 단위 테스트, MVC 테스트, JPA 통합 테스트로 주요 비즈니스 규칙 검증
+- Docker Compose와 배포 스크립트를 통해 EC2 환경에서 실행 가능한 형태로 구성
 
-# Tech Stack
+## 기술 스택
 
-### Backend
+| 영역 | 기술 |
+| --- | --- |
+| Language | Java 17 |
+| Backend | Spring Boot 3.1.0, Spring MVC, Spring Security, Spring Data JPA, Validation |
+| View | Thymeleaf, Thymeleaf Layout Dialect, HTML, CSS, JavaScript |
+| Database | H2(local), MySQL/AWS RDS(production configuration) |
+| Cache | Redis |
+| Mail | Spring Mail, SMTP |
+| Test | JUnit 5, Spring Boot Test, Spring Security Test, Mockito |
+| Infra | Docker, Docker Compose, AWS EC2 |
+| Build | Gradle |
 
-* Java
-* Spring Boot
-* Spring Security
-* Spring Data JPA
+## 주요 기능
 
-### Database
+### 게시판
 
-* H2 Database (Local Development)
-* MySQL (Production / AWS RDS)
+- 게시글 목록, 상세 조회
+- 게시글 작성, 수정, 삭제
+- 제목, 본문, 작성자, 댓글 작성자 기준 검색
+- 작성자 본인만 수정/삭제 가능한 권한 검증
+- Markdown 렌더링 유틸 적용
 
-### Infrastructure
+### 댓글
 
-* Docker
-* Docker Compose
-* Redis
-* AWS EC2
+- 게시글별 댓글 작성 및 조회
+- 댓글 삭제
+- 로그인 사용자 기준 작성자 검증
 
-### Template / Frontend
+### 회원
 
-* Thymeleaf
-* HTML / CSS / JavaScript
+- 회원가입, 로그인, 로그아웃
+- 회원 정보 조회 및 비밀번호 변경
+- 아이디 찾기
+- 비밀번호 찾기 및 임시 비밀번호 메일 발송
+- BCrypt 기반 비밀번호 암호화
 
-### Build Tool
+### 이메일 인증
 
-* Gradle
+- 회원가입 이메일 인증코드 발송
+- Redis에 인증코드 저장 및 만료 시간 관리
+- 인증코드 검증 성공 시 Redis 데이터 삭제
+- 메일 발송 실패 시 기존 인증코드 복구 처리
 
----
-
-# Main Features
-
-### 게시판 기능
-
-* 게시글 작성
-* 게시글 목록 조회
-* 게시글 상세 조회
-* 게시글 수정
-* 게시글 삭제
-
-### 댓글 기능
-
-* 댓글 작성
-* 댓글 조회
-* 댓글 삭제
-
-### 회원 기능
-
-* 회원가입
-* 로그인 / 로그아웃
-* 회원 정보 수정
-* 아이디 찾기
-* 비밀번호 찾기
-
-### 인증 기능
-
-* 이메일 인증
-
----
-
-# Project Structure
-
-```text
-Spring-Boot-Board
-├─ docker
-│  ├─ docker-compose.yaml
-│  ├─ nginx
-│  ├─ redis
-│  ├─ scripts
-│  └─ web
-├─ web
-│  └─ spring-boot-board
-│     ├─ src
-│     │  ├─ main
-│     │  │  ├─ java/dizzyfox734/springbootboard
-│     │  │  │  ├─ common
-│     │  │  │  ├─ controller
-│     │  │  │  ├─ domain
-│     │  │  │  ├─ exception
-│     │  │  │  ├─ service
-│     │  │  │  └─ util
-│     │  │  └─ resources
-│     │  │     ├─ templates
-│     │  │     ├─ static
-│     │  │     └─ yaml
-│     │  └─ test
-│     ├─ build.gradle
-│     ├─ gradlew
-│     └─ settings.gradle
-├─ deploy.sh
-└─ README.md
-```
-
----
-
-# Package Overview
-
-### common
-
-공통 설정 및 유틸 클래스
-
-* `SecurityConfig`
-* `JpaConfig`
-
-### controller
-
-웹 요청 처리
-
-* `PostController`
-* `CommentController`
-* `MemberController`
-* `MainController`
-
-### domain
-
-JPA Entity 및 Repository
-
-* post
-* comment
-* member
-
-### service
-
-비즈니스 로직 처리
-
-* `PostService`
-* `CommentService`
-* `MemberService`
-* `MailService`
-
-### exception
-
-사용자 정의 예외 처리
-
----
-
-# System Architecture
+## 아키텍처
 
 ```text
 Client
-  │
-  ▼
+  |
+  v
 Spring Boot Application
-  ├─ Redis
-  └─ MySQL (AWS RDS / external)
+  |-- Spring MVC / Thymeleaf
+  |-- Spring Security
+  |-- Service Layer
+  |-- Spring Data JPA ---- H2(local) / MySQL(AWS RDS)
+  |
+  `-- Redis
+      `-- Email certification code with TTL
 ```
 
----
+## 패키지 구조
 
-# Docker Configuration
+```text
+web/spring-boot-board/src/main/java/dizzyfox734/springbootboard
+├─ post
+│  ├─ controller
+│  ├─ domain
+│  ├─ repository
+│  └─ service
+├─ comment
+│  ├─ controller
+│  ├─ domain
+│  ├─ repository
+│  └─ service
+├─ member
+│  ├─ controller
+│  ├─ domain
+│  ├─ exception
+│  ├─ repository
+│  └─ service
+├─ mail
+│  ├─ domain
+│  ├─ exception
+│  ├─ repository
+│  └─ service
+├─ global
+│  ├─ config
+│  ├─ exception
+│  ├─ utils
+│  └─ validation
+└─ common
+   └─ entity
+```
 
-Docker Compose를 이용해 **Spring Boot 애플리케이션과 Redis를 컨테이너 환경에서 실행**할 수 있도록 구성했습니다.
+## 핵심 구현 포인트
 
-현재 `docker-compose.yaml` 기준 실행 서비스
+### 인증과 권한 관리
 
-* web : Spring Boot 애플리케이션
-* redis : Redis 캐시 서버
+- `SecurityConfig`에서 공개 페이지, 인증 필요 페이지, 정적 리소스, H2 콘솔 접근 정책을 분리했습니다.
+- 게시글/댓글 수정과 삭제는 서비스 계층에서 작성자 검증을 수행해 컨트롤러 외부에서도 동일한 규칙이 적용되도록 했습니다.
+- 회원 비밀번호는 `BCryptPasswordEncoder`로 암호화해 저장합니다.
 
-프로젝트에는 `nginx` 관련 Dockerfile 및 설정 파일도 포함되어 있으나
-현재 docker-compose 파일에서는 비활성화되어 있습니다.
+### 이메일 인증 흐름
 
----
+- `MailCertificationService`가 인증코드 생성, Redis 저장, SMTP 발송, 검증을 담당합니다.
+- 인증코드는 Redis에 TTL과 함께 저장되며, 만료되었거나 값이 일치하지 않으면 별도 예외를 발생시킵니다.
+- 재발송 중 메일 발송이 실패하면 새 인증코드 저장으로 인해 기존 인증 상태가 깨지지 않도록 이전 인증코드를 복구합니다.
 
-# Environment Configuration
+### 게시글 검색
 
-### Local Development
+- `PostService`에서 JPA `Specification`을 사용해 제목, 본문, 게시글 작성자, 댓글 작성자 기준 검색 조건을 구성했습니다.
+- 페이징은 `PageRequest`와 생성일 내림차순 정렬을 적용했습니다.
 
-* H2 Database 사용
-* `application-local-db.yml`
+### 예외 처리와 검증
 
-### Mail Configuration
+- `DataNotFoundException`, `AccessDeniedException`, `InvalidRequestException` 등 도메인 상황에 맞는 예외를 분리했습니다.
+- `GlobalViewExceptionHandler`에서 화면 요청에 대한 공통 예외 응답을 처리합니다.
+- 비밀번호 확인 검증은 커스텀 validation annotation으로 분리했습니다.
 
-* `application-mail.yml`
-* 이메일 인증 기능 설정
+## 테스트
 
-### Production
+테스트는 계층별로 분리되어 있습니다.
 
-* `application-real.properties`
-* AWS RDS(MySQL) 연결
+- Domain test: `PostTest`, `CommentTest`, `MemberTest`
+- Service test: `PostServiceTest`, `CommentServiceTest`, `MemberServiceTest`, `MailServiceTest`, `MailCertificationServiceTest`
+- Controller test: `PostControllerTest`, `CommentControllerTest`, `MemberControllerTest`
+- Repository integration test: `PostRepositoryJpaIntegrationTest`, `CommentRepositoryJpaIntegrationTest`, `MemberRepositoryJpaIntegrationTest`
+- Exception handler test: `GlobalViewExceptionHandlerTest`
 
----
+```bash
+cd web/spring-boot-board
+./gradlew test
+```
 
-# Run
+## 실행 방법
 
-### Application Build
+### 로컬 실행
+
+로컬 기본 프로필은 H2 DB와 메일 설정을 사용합니다. 메일 인증 기능을 사용하려면 SMTP 계정 정보를 환경 변수로 설정해야 합니다.
+
+```bash
+export SPRING_MAIL_USERNAME=your-email@example.com
+export SPRING_MAIL_PASSWORD=your-app-password
+
+cd web/spring-boot-board
+./gradlew bootRun
+```
+
+빌드만 수행할 때는 다음 명령을 사용합니다.
 
 ```bash
 cd web/spring-boot-board
 ./gradlew build
 ```
 
-### Docker 실행
+### Docker Compose 실행
+
+`docker/env`에 포트, 프로젝트 이름, 메일 계정 정보를 설정한 뒤 실행합니다.
 
 ```bash
 cd docker
-docker-compose up -d
+docker compose --env-file env up -d --build
 ```
 
----
+현재 Compose 구성의 활성 서비스는 다음과 같습니다.
 
-# Test Code
+- `web`: Spring Boot 애플리케이션
+- `redis`: 이메일 인증코드 저장용 Redis
 
-테스트 코드 포함
+`nginx` Dockerfile과 설정은 포함되어 있지만 현재 `docker-compose.yaml`에서는 비활성화되어 있습니다.
 
-* `SpringBootBoardApplicationTests`
-* `PostTest`
-* `JpaRepositoryTest`
-* `MailServiceTest`
+## 설정 파일
 
----
+| 파일 | 설명 |
+| --- | --- |
+| `application.yml` | 기본 프로필 및 공통 설정 |
+| `yaml/application-local-db.yml` | 로컬 H2 DB 설정 |
+| `yaml/application-mail.yml` | SMTP 및 인증코드 설정 |
+| `yaml/application-real.properties` | 운영 DB 설정 예시 |
+| `docker/env` | Docker Compose 환경 변수 |
 
-# What I Learned
+## 배포
 
-이 프로젝트를 통해 다음을 학습했습니다.
+`deploy.sh`는 EC2 서버의 지정된 경로에서 기존 컨테이너를 종료하고, 이전 JAR를 백업한 뒤 Gradle 빌드와 Docker Compose 실행 스크립트를 호출하는 흐름으로 구성되어 있습니다.
 
-* Spring Boot 기반 웹 애플리케이션 구조 설계
-* Spring Security를 활용한 인증 처리
-* JPA Entity / Repository / Service 계층 구조 이해
-* 게시판 / 댓글 / 회원 기능 구현
-* 이메일 인증 및 계정 관련 기능 처리
-* Docker Compose 기반 서비스 실행 환경 구성
-* Redis 캐시 서버 연동
-* AWS EC2 / RDS 배포 환경 구성
+```text
+destroy container -> backup previous jar -> gradle build -> create container
+```
 
----
+## 회고
 
-# Author
+이 프로젝트를 통해 게시판 CRUD뿐 아니라 인증/인가, 이메일 인증, Redis TTL 저장소, 예외 처리, 테스트 전략, Docker 기반 실행 환경까지 하나의 애플리케이션 흐름으로 연결하는 경험을 정리했습니다. 특히 서비스 계층에 비즈니스 규칙을 두고 테스트로 검증하는 구조를 만들면서, 기능 구현보다 유지보수 가능한 경계 설정이 더 중요하다는 점을 학습했습니다.
 
-GitHub
-[https://github.com/dizzyfox734](https://github.com/dizzyfox734)
+## 작성자
+
+- GitHub: [dizzyfox734](https://github.com/dizzyfox734)
