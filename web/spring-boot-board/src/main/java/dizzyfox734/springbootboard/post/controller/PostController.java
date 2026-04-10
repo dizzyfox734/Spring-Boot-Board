@@ -1,8 +1,6 @@
 package dizzyfox734.springbootboard.post.controller;
 
 import dizzyfox734.springbootboard.comment.controller.dto.CommentDto;
-import dizzyfox734.springbootboard.member.domain.Member;
-import dizzyfox734.springbootboard.member.service.MemberService;
 import dizzyfox734.springbootboard.post.controller.dto.PostDto;
 import dizzyfox734.springbootboard.post.domain.Post;
 import dizzyfox734.springbootboard.post.service.PostService;
@@ -23,7 +21,6 @@ import java.security.Principal;
 public class PostController {
 
     private final PostService postService;
-    private final MemberService memberService;
 
     @GetMapping("/list")
     public String list(Model model,
@@ -67,8 +64,7 @@ public class PostController {
             return "post/form";
         }
 
-        Member member = memberService.getMember(principal.getName());
-        postService.create(postDto.getTitle(), postDto.getContent(), member);
+        postService.create(postDto.getTitle(), postDto.getContent(), principal.getName());
 
         return "redirect:/post/list";
     }

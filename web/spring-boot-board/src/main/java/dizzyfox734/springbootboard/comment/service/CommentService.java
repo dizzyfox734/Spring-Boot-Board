@@ -6,9 +6,9 @@ import dizzyfox734.springbootboard.global.exception.AccessDeniedException;
 import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.member.domain.Member;
-import dizzyfox734.springbootboard.member.service.MemberService;
+import dizzyfox734.springbootboard.member.repository.MemberRepository;
 import dizzyfox734.springbootboard.post.domain.Post;
-import dizzyfox734.springbootboard.post.service.PostService;
+import dizzyfox734.springbootboard.post.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,17 +17,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CommentService {
 
-    private final PostService postService;
-    private final MemberService memberService;
+    private final PostRepository postRepository;
+    private final MemberRepository memberRepository;
     private final CommentRepository commentRepository;
 
     @Transactional
     public Integer create(Integer postId, String content, String username) {
         validatePostId(postId);
         validateUsername(username);
+        validateContent(content);
 
-        Post post = postService.getPost(postId);
-        Member author = memberService.getMember(username);
+        Post post = getPost(postId);
+        Member author = getMember(username);
 
         Comment comment = Comment.create(content, post, author);
 
@@ -93,6 +94,16 @@ public class CommentService {
         }
     }
 
+    private Post getPost(Integer postId) {
+        return postRepository.findById(postId)
+                .orElseThrow(() -> new DataNotFoundException("Post not found"));
+    }
+
+    private Member getMember(String username) {
+        return memberRepository.findOneWithAuthoritiesByUsername(username)
+                .orElseThrow(() -> new DataNotFoundException("user not found"));
+    }
+
     private void validatePostId(Integer postId) {
         if (postId == null) {
             throw new InvalidRequestException("Post id is null");
@@ -108,6 +119,12 @@ public class CommentService {
     private void validateUsername(String username) {
         if (username == null || username.isBlank()) {
             throw new InvalidRequestException("Username is null or blank");
+        }
+    }
+
+    private void validateContent(String content) {
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException("내용은 필수항목입니다.");
         }
     }
 }

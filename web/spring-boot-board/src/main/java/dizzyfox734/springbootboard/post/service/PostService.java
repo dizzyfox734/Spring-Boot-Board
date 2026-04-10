@@ -5,6 +5,7 @@ import dizzyfox734.springbootboard.global.exception.AccessDeniedException;
 import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.member.domain.Member;
+import dizzyfox734.springbootboard.member.service.MemberService;
 import dizzyfox734.springbootboard.post.domain.Post;
 import dizzyfox734.springbootboard.post.repository.PostRepository;
 import jakarta.persistence.criteria.*;
@@ -25,6 +26,7 @@ import java.util.List;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final MemberService memberService;
 
     @Transactional(readOnly = true)
     public Page<Post> findPosts(int page, String kw) {
@@ -32,6 +34,10 @@ public class PostService {
         sorts.add(Sort.Order.desc("createdDate"));
 
         Pageable pageable = PageRequest.of(page, 10, Sort.by(sorts));
+        if (kw == null || kw.isBlank()) {
+            return postRepository.findAll(pageable);
+        }
+
         Specification<Post> spec = search(kw);
 
         return postRepository.findAll(spec, pageable);
@@ -53,7 +59,9 @@ public class PostService {
      * @return 생성한 포스트 id
      */
     @Transactional
-    public Integer create(String title, String content, Member member) {
+    public Integer create(String title, String content, String username) {
+        validateUsername(username);
+        Member member = memberService.getMember(username);
         Post post = Post.create(title, content, member);
 
         return postRepository.save(post).getId();
@@ -146,14 +154,18 @@ public class PostService {
         }
     }
 
+    private void validateUsername(String username) {
+        if (username == null || username.isBlank()) {
+            throw new InvalidRequestException("Username is null or blank");
+        }
+    }
+
     private void validateAuthor(Post post, String username) {
         if (post.getAuthor() == null) {
             throw new IllegalStateException("Post has no author");
         }
 
-        if (username == null || username.isBlank()) {
-            throw new InvalidRequestException("Username is null or blank");
-        }
+        validateUsername(username);
 
         if (!post.isWrittenBy(username)) {
             throw new AccessDeniedException("작성자만 접근할 수 있습니다.");
