@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
 @Repository
@@ -17,15 +18,29 @@ public class MailCertificationRepository {
     private final MailProperties mailProperties;
 
     public void save(String email, String certificationCode) {
+        save(email, certificationCode, Duration.ofSeconds(mailProperties.getCertificationExpirationSeconds()));
+    }
+
+    public void save(String email, String certificationCode, Duration expiration) {
         stringRedisTemplate.opsForValue().set(
                 generateKey(email),
                 certificationCode,
-                Duration.ofSeconds(mailProperties.getCertificationExpirationSeconds())
+                expiration
         );
     }
 
     public String get(String email) {
         return stringRedisTemplate.opsForValue().get(generateKey(email));
+    }
+
+    public Duration getExpiration(String email) {
+        Long seconds = stringRedisTemplate.getExpire(generateKey(email), TimeUnit.SECONDS);
+
+        if (seconds == null || seconds <= 0) {
+            return null;
+        }
+
+        return Duration.ofSeconds(seconds);
     }
 
     public void remove(String email) {

@@ -5,7 +5,8 @@ import dizzyfox734.springbootboard.mail.exception.ExpiredMailCertificationCodeEx
 import dizzyfox734.springbootboard.mail.exception.InvalidMailCertificationCodeException;
 import dizzyfox734.springbootboard.mail.repository.MailCertificationRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
 
 @Service
 public class MailCertificationService {
@@ -27,16 +28,37 @@ public class MailCertificationService {
         this.mailSenderService = mailSenderService;
     }
 
-    @Transactional
     public void sendSignupVerificationCode(String email) {
+        String previousCode = mailCertificationRepository.get(email);
+        Duration previousExpiration = previousCode == null
+                ? null
+                : mailCertificationRepository.getExpiration(email);
         String certificationCode = certificationCodeGenerator.generate();
         String content = mailContentBuilder.buildSignUpVerificationContent(certificationCode);
 
-        mailSenderService.send(email, SIGNUP_MAIL_SUBJECT, content);
         mailCertificationRepository.save(email, certificationCode);
+        try {
+            mailSenderService.send(email, SIGNUP_MAIL_SUBJECT, content);
+        } catch (RuntimeException e) {
+            restorePreviousCertificationCode(email, previousCode, previousExpiration);
+            throw e;
+        }
     }
 
-    @Transactional
+    private void restorePreviousCertificationCode(String email, String previousCode, Duration previousExpiration) {
+        if (previousCode == null) {
+            mailCertificationRepository.remove(email);
+            return;
+        }
+
+        if (previousExpiration == null) {
+            mailCertificationRepository.save(email, previousCode);
+            return;
+        }
+
+        mailCertificationRepository.save(email, previousCode, previousExpiration);
+    }
+
     public void verifyEmailCertificationCode(String email, String checkCode) {
         String savedCode = mailCertificationRepository.get(email);
 
