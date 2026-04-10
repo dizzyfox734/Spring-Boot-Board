@@ -11,6 +11,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -33,7 +35,7 @@ public class MailCertificationServiceTest {
     private MailCertificationService mailCertificationService;
 
     @Test
-    @DisplayName("sendSignupVerificationCode(): 인증코드를 생성하고 메일 본문을 만든 뒤 발송 후 저장한다")
+    @DisplayName("sendSignupVerificationCode(): 인증코드를 생성하고 저장한 뒤 메일을 발송한다")
     public void shouldSendSignupVerificationCodeAndSaveCertificationCode_whenEmailIsValid() {
         // given
         String email = "test@example.com";
@@ -55,8 +57,8 @@ public class MailCertificationServiceTest {
     }
 
     @Test
-    @DisplayName("sendSignupVerificationCode(): 메일 발송에 실패하면 인증코드를 저장하지 않는다")
-    public void shouldNotSaveCertificationCode_whenMailSendFails() {
+    @DisplayName("sendSignupVerificationCode(): 기존 코드가 없고 메일 발송에 실패하면 저장한 인증코드를 제거한다")
+    public void shouldRemoveCertificationCode_whenMailSendFails() {
         // given
         String email = "test@example.com";
         String certificationCode = "A1B2C3D4";
@@ -75,7 +77,38 @@ public class MailCertificationServiceTest {
                 () -> mailCertificationService.sendSignupVerificationCode(email)
         );
 
-        verify(mailCertificationRepository, never()).save(anyString(), anyString());
+        verify(mailCertificationRepository).save(email, certificationCode);
+        verify(mailCertificationRepository).remove(email);
+    }
+
+    @Test
+    @DisplayName("sendSignupVerificationCode(): 재전송 메일 발송에 실패하면 기존 인증코드를 복구한다")
+    public void shouldRestorePreviousCertificationCode_whenResendMailFails() {
+        // given
+        String email = "test@example.com";
+        String previousCode = "OLD12345";
+        String certificationCode = "A1B2C3D4";
+        String content = "test content";
+        Duration previousExpiration = Duration.ofSeconds(120);
+
+        when(mailCertificationRepository.get(email)).thenReturn(previousCode);
+        when(mailCertificationRepository.getExpiration(email)).thenReturn(previousExpiration);
+        when(certificationCodeGenerator.generate()).thenReturn(certificationCode);
+        when(mailContentBuilder.buildSignUpVerificationContent(certificationCode))
+                .thenReturn(content);
+
+        doThrow(new RuntimeException("이메일 발송 실패"))
+                .when(mailSenderService)
+                .send(email, "회원가입 인증코드입니다.", content);
+
+        // when & then
+        assertThrows(RuntimeException.class,
+                () -> mailCertificationService.sendSignupVerificationCode(email)
+        );
+
+        verify(mailCertificationRepository).save(email, certificationCode);
+        verify(mailCertificationRepository).save(email, previousCode, previousExpiration);
+        verify(mailCertificationRepository, never()).remove(email);
     }
 
     @Test

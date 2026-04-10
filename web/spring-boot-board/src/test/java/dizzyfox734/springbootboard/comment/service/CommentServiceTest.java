@@ -7,9 +7,9 @@ import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.member.domain.Authority;
 import dizzyfox734.springbootboard.member.domain.Member;
-import dizzyfox734.springbootboard.member.service.MemberService;
+import dizzyfox734.springbootboard.member.repository.MemberRepository;
 import dizzyfox734.springbootboard.post.domain.Post;
-import dizzyfox734.springbootboard.post.service.PostService;
+import dizzyfox734.springbootboard.post.repository.PostRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,10 +30,10 @@ import static org.mockito.Mockito.*;
 class CommentServiceTest {
 
     @Mock
-    private PostService postService;
+    private PostRepository postRepository;
 
     @Mock
-    private MemberService memberService;
+    private MemberRepository memberRepository;
 
     @Mock
     private CommentRepository commentRepository;
@@ -93,8 +93,8 @@ class CommentServiceTest {
         Post post = createPost("postwriter");
         setPostId(post, 1);
 
-        when(postService.getPost(1)).thenReturn(post);
-        when(memberService.getMember("testuser")).thenReturn(member);
+        when(postRepository.findById(1)).thenReturn(Optional.of(post));
+        when(memberRepository.findOneWithAuthoritiesByUsername("testuser")).thenReturn(Optional.of(member));
         when(commentRepository.save(any(Comment.class)))
                 .thenAnswer(invocation -> {
                     Comment savedComment = invocation.getArgument(0);
@@ -109,8 +109,8 @@ class CommentServiceTest {
 
         // then
         assertEquals(1, result);
-        verify(postService).getPost(1);
-        verify(memberService).getMember("testuser");
+        verify(postRepository).findById(1);
+        verify(memberRepository).findOneWithAuthoritiesByUsername("testuser");
         verify(commentRepository).save(commentCaptor.capture());
 
         Comment savedComment = commentCaptor.getValue();
@@ -128,7 +128,7 @@ class CommentServiceTest {
         );
 
         assertEquals("Post id is null", exception.getMessage());
-        verifyNoInteractions(postService, memberService, commentRepository);
+        verifyNoInteractions(postRepository, memberRepository, commentRepository);
     }
 
     @Test
@@ -140,7 +140,7 @@ class CommentServiceTest {
         );
 
         assertEquals("Username is null or blank", exception.getMessage());
-        verifyNoInteractions(postService, memberService, commentRepository);
+        verifyNoInteractions(postRepository, memberRepository, commentRepository);
     }
 
     @Test
@@ -168,17 +168,16 @@ class CommentServiceTest {
     @Test
     @DisplayName("create(): 존재하지 않는 게시글이면 예외가 발생한다")
     void shouldPropagateException_whenPostDoesNotExistForCreate() {
-        when(postService.getPost(1))
-                .thenThrow(new DataNotFoundException("post not found"));
+        when(postRepository.findById(1)).thenReturn(Optional.empty());
 
         DataNotFoundException exception = assertThrows(
                 DataNotFoundException.class,
                 () -> commentService.create(1, "test content", "testuser")
         );
 
-        assertEquals("post not found", exception.getMessage());
-        verify(postService).getPost(1);
-        verifyNoInteractions(memberService);
+        assertEquals("Post not found", exception.getMessage());
+        verify(postRepository).findById(1);
+        verifyNoInteractions(memberRepository);
         verify(commentRepository, never()).save(any(Comment.class));
     }
 
@@ -188,18 +187,18 @@ class CommentServiceTest {
         Post post = createPost("postwriter");
         setPostId(post, 1);
 
-        when(postService.getPost(1)).thenReturn(post);
-        when(memberService.getMember("testuser"))
-                .thenThrow(new DataNotFoundException("member not found"));
+        when(postRepository.findById(1)).thenReturn(Optional.of(post));
+        when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
+                .thenReturn(Optional.empty());
 
         DataNotFoundException exception = assertThrows(
                 DataNotFoundException.class,
                 () -> commentService.create(1, "test content", "testuser")
         );
 
-        assertEquals("member not found", exception.getMessage());
-        verify(postService).getPost(1);
-        verify(memberService).getMember("testuser");
+        assertEquals("user not found", exception.getMessage());
+        verify(postRepository).findById(1);
+        verify(memberRepository).findOneWithAuthoritiesByUsername("testuser");
         verify(commentRepository, never()).save(any(Comment.class));
     }
 

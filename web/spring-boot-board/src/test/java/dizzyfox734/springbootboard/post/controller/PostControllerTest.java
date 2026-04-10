@@ -5,7 +5,6 @@ import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.global.utils.MarkdownUtil;
 import dizzyfox734.springbootboard.member.domain.Authority;
 import dizzyfox734.springbootboard.member.domain.Member;
-import dizzyfox734.springbootboard.member.service.MemberService;
 import dizzyfox734.springbootboard.post.domain.Post;
 import dizzyfox734.springbootboard.post.service.PostService;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,9 +51,6 @@ class PostControllerTest {
     @MockBean
     private PostService postService;
 
-    @MockBean
-    private MemberService memberService;
-
     @MockBean(name = "markdownUtil")
     private MarkdownUtil markdownUtil;
 
@@ -87,7 +83,7 @@ class PostControllerTest {
 
     @BeforeEach
     void setUp() {
-        Mockito.reset(postService, memberService);
+        Mockito.reset(postService);
     }
 
     @Nested
@@ -212,9 +208,6 @@ class PostControllerTest {
         @WithMockUser(username = "testuser")
         @DisplayName("유효한 입력이면 게시글을 생성하고 목록으로 리다이렉트한다")
         void shouldCreatePostAndRedirectToList_whenValidInputIsGiven() throws Exception {
-            Member member = mock(Member.class);
-            given(memberService.getMember("testuser")).willReturn(member);
-
             mockMvc.perform(post("/post/create")
                             .with(csrf())
                             .param("title", "test title")
@@ -222,8 +215,7 @@ class PostControllerTest {
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrl("/post/list"));
 
-            then(memberService).should().getMember("testuser");
-            then(postService).should().create("test title", "test content", member);
+            then(postService).should().create("test title", "test content", "testuser");
         }
 
         @Test
@@ -236,8 +228,7 @@ class PostControllerTest {
                     .andExpect(view().name("post/form"))
                     .andExpect(model().attribute("isModify", false));
 
-            then(memberService).should(never()).getMember(anyString());
-            then(postService).should(never()).create(anyString(), anyString(), any(Member.class));
+            then(postService).should(never()).create(anyString(), anyString(), anyString());
         }
 
         @Test

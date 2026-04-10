@@ -5,6 +5,7 @@ import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.member.domain.Authority;
 import dizzyfox734.springbootboard.member.domain.Member;
+import dizzyfox734.springbootboard.member.service.MemberService;
 import dizzyfox734.springbootboard.post.domain.Post;
 import dizzyfox734.springbootboard.post.repository.PostRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +29,9 @@ class PostServiceTest {
 
     @Mock
     private PostRepository postRepository;
+
+    @Mock
+    private MemberService memberService;
 
     @InjectMocks
     private PostService postService;
@@ -117,6 +121,7 @@ class PostServiceTest {
         // given
         Member member = createMember("testuser");
 
+        when(memberService.getMember("testuser")).thenReturn(member);
         when(postRepository.save(any(Post.class)))
                 .thenAnswer(invocation -> {
                     Post saved = invocation.getArgument(0);
@@ -127,10 +132,11 @@ class PostServiceTest {
         ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
 
         // when
-        Integer result = postService.create("title", "content", member);
+        Integer result = postService.create("title", "content", "testuser");
 
         // then
         assertEquals(1, result);
+        verify(memberService).getMember("testuser");
         verify(postRepository).save(captor.capture());
 
         Post saved = captor.getValue();
@@ -142,9 +148,11 @@ class PostServiceTest {
     @Test
     @DisplayName("create(): 제목이 null이면 예외가 발생한다")
     void shouldThrowIllegalArgumentException_whenTitleIsNullOnCreate() {
+        when(memberService.getMember("testuser")).thenReturn(createMember("testuser"));
+
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> postService.create(null, "content", createMember("testuser"))
+                () -> postService.create(null, "content", "testuser")
         );
 
         assertEquals("제목은 필수항목입니다.", ex.getMessage());
@@ -154,9 +162,11 @@ class PostServiceTest {
     @Test
     @DisplayName("create(): 내용이 공백이면 예외가 발생한다")
     void shouldThrowIllegalArgumentException_whenContentIsBlankOnCreate() {
+        when(memberService.getMember("testuser")).thenReturn(createMember("testuser"));
+
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> postService.create("title", "   ", createMember("testuser"))
+                () -> postService.create("title", "   ", "testuser")
         );
 
         assertEquals("내용은 필수항목입니다.", ex.getMessage());
@@ -164,14 +174,15 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("create(): 작성자가 null이면 예외가 발생한다")
-    void shouldThrowIllegalArgumentException_whenAuthorIsNullOnCreate() {
-        IllegalArgumentException ex = assertThrows(
-                IllegalArgumentException.class,
+    @DisplayName("create(): username이 null이면 예외가 발생한다")
+    void shouldThrowInvalidRequestException_whenUsernameIsNullOnCreate() {
+        InvalidRequestException ex = assertThrows(
+                InvalidRequestException.class,
                 () -> postService.create("title", "content", null)
         );
 
-        assertEquals("작성자는 필수입니다.", ex.getMessage());
+        assertEquals("Username is null or blank", ex.getMessage());
+        verifyNoInteractions(memberService);
         verify(postRepository, never()).save(any());
     }
 
