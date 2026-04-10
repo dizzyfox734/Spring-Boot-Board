@@ -12,6 +12,7 @@ import dizzyfox734.springbootboard.post.service.PostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -33,6 +34,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -53,6 +55,11 @@ public class CommentControllerTest {
 
     @MockBean(name = "markdownUtil")
     private MarkdownUtil markdownUtil;
+
+    @BeforeEach
+    void setUp() {
+        reset(postService, commentService, markdownUtil);
+    }
 
     @TestConfiguration
     static class TestSecurityConfig {
