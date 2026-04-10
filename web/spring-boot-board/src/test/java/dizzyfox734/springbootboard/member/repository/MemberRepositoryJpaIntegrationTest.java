@@ -7,11 +7,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 class MemberRepositoryJpaIntegrationTest {
@@ -61,6 +63,32 @@ class MemberRepositoryJpaIntegrationTest {
         Optional<Member> result = memberRepository.findOneWithAuthoritiesByEmail("not-exists@example.com");
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("email 이 중복되면 저장할 수 없다")
+    void shouldRejectDuplicateEmail() {
+        Authority roleUser = authorityRepository.findById("ROLE_USER")
+                .orElseThrow(() -> new AssertionError("ROLE_USER 권한이 존재해야 합니다."));
+        Member firstMember = Member.create(
+                "firstuser",
+                "encodedPassword",
+                "홍길동",
+                "duplicate@example.com",
+                Set.of(roleUser)
+        );
+        Member secondMember = Member.create(
+                "seconduser",
+                "encodedPassword",
+                "김철수",
+                "duplicate@example.com",
+                Set.of(roleUser)
+        );
+
+        memberRepository.saveAndFlush(firstMember);
+
+        assertThatThrownBy(() -> memberRepository.saveAndFlush(secondMember))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private void createAndSaveMemberWithAuthorities() {
