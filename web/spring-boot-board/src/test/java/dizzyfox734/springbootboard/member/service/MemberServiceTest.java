@@ -7,7 +7,6 @@ import dizzyfox734.springbootboard.mail.exception.MailMessageBuildException;
 import dizzyfox734.springbootboard.mail.exception.MailSendException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
 import dizzyfox734.springbootboard.mail.service.MailService;
-import dizzyfox734.springbootboard.member.controller.dto.SignupDto;
 import dizzyfox734.springbootboard.member.domain.Authority;
 import dizzyfox734.springbootboard.member.domain.Member;
 import dizzyfox734.springbootboard.member.exception.AuthorityNotFoundException;
@@ -54,15 +53,14 @@ class MemberServiceTest {
     @InjectMocks
     private MemberService memberService;
 
-    private SignupDto createSignupDto() {
-        SignupDto dto = new SignupDto();
-        dto.setUsername("testuser");
-        dto.setPassword1("password123");
-        dto.setPassword2("password123");
-        dto.setName("홍길동");
-        dto.setEmail("test@example.com");
-        dto.setEmailConfirm("123456");
-        return dto;
+    private Long createMember() {
+        return memberService.create(
+                "testuser",
+                "password123",
+                "홍길동",
+                "test@example.com",
+                "123456"
+        );
     }
 
     private Authority createAuthority() {
@@ -95,7 +93,6 @@ class MemberServiceTest {
     @DisplayName("create(): 유효한 회원가입 정보가 주어지면 회원을 생성하고 저장한 뒤 회원 ID를 반환한다")
     void shouldCreateMemberAndReturnMemberId_whenCreateRequestIsValid() {
         // given
-        SignupDto dto = createSignupDto();
         Authority roleUser = createAuthority();
 
         when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
@@ -117,7 +114,7 @@ class MemberServiceTest {
         ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
 
         // when
-        Long result = memberService.create(dto);
+        Long result = createMember();
 
         // then
         assertEquals(1L, result);
@@ -144,7 +141,6 @@ class MemberServiceTest {
     @DisplayName("create(): username이 중복되면 DuplicateUsernameException이 발생한다")
     void shouldThrowDuplicateUsernameException_whenUsernameAlreadyExists() {
         // given
-        SignupDto dto = createSignupDto();
         Member existingMember = createMember(
                 "testuser",
                 "encodedPassword",
@@ -158,7 +154,7 @@ class MemberServiceTest {
         // when
         DuplicateUsernameException exception = assertThrows(
                 DuplicateUsernameException.class,
-                () -> memberService.create(dto)
+                () -> createMember()
         );
 
         // then
@@ -175,7 +171,6 @@ class MemberServiceTest {
     @DisplayName("create(): email이 중복되면 DuplicateEmailException이 발생한다")
     void shouldThrowDuplicateEmailException_whenEmailAlreadyExists() {
         // given
-        SignupDto dto = createSignupDto();
         Member existingMember = createMember(
                 "existingMember",
                 "encodedPassword",
@@ -191,7 +186,7 @@ class MemberServiceTest {
         // when
         DuplicateEmailException exception = assertThrows(
                 DuplicateEmailException.class,
-                () -> memberService.create(dto)
+                () -> createMember()
         );
 
         // then
@@ -208,8 +203,6 @@ class MemberServiceTest {
     @DisplayName("create(): 인증코드가 일치하지 않으면 EmailVerificationException이 발생한다")
     void shouldThrowEmailVerificationException_whenCertificationCodeIsInvalid() {
         // given
-        SignupDto dto = createSignupDto();
-
         when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
                 .thenReturn(Optional.empty());
         when(memberRepository.findOneWithAuthoritiesByEmail("test@example.com"))
@@ -221,7 +214,7 @@ class MemberServiceTest {
         // when
         EmailVerificationException exception = assertThrows(
                 EmailVerificationException.class,
-                () -> memberService.create(dto)
+                () -> createMember()
         );
 
         // then
@@ -238,8 +231,6 @@ class MemberServiceTest {
     @DisplayName("create(): 인증코드가 없거나 만료되면 EmailVerificationException이 발생한다")
     void shouldThrowEmailVerificationException_whenCertificationCodeIsExpired() {
         // given
-        SignupDto dto = createSignupDto();
-
         when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
                 .thenReturn(Optional.empty());
         when(memberRepository.findOneWithAuthoritiesByEmail("test@example.com"))
@@ -251,7 +242,7 @@ class MemberServiceTest {
         // when
         EmailVerificationException exception = assertThrows(
                 EmailVerificationException.class,
-                () -> memberService.create(dto)
+                () -> createMember()
         );
 
         // then
@@ -268,8 +259,6 @@ class MemberServiceTest {
     @DisplayName("create(): 기본 권한 조회에 실패하면 AuthorityNotFoundException이 발생한다")
     void shouldThrowAuthorityNotFoundException_whenDefaultAuthorityIsMissing() {
         // given
-        SignupDto dto = createSignupDto();
-
         when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
                 .thenReturn(Optional.empty());
         when(memberRepository.findOneWithAuthoritiesByEmail("test@example.com"))
@@ -280,7 +269,7 @@ class MemberServiceTest {
         // when
         AuthorityNotFoundException exception = assertThrows(
                 AuthorityNotFoundException.class,
-                () -> memberService.create(dto)
+                () -> createMember()
         );
 
         // then
@@ -297,7 +286,6 @@ class MemberServiceTest {
     @DisplayName("create(): 저장 중 repository에서 예외가 발생하면 예외가 전파된다")
     void shouldPropagateException_whenRepositorySaveFailsInCreate() {
         // given
-        SignupDto dto = createSignupDto();
         Authority roleUser = createAuthority();
 
         when(memberRepository.findOneWithAuthoritiesByUsername("testuser"))
@@ -314,7 +302,7 @@ class MemberServiceTest {
         // when
         RuntimeException exception = assertThrows(
                 RuntimeException.class,
-                () -> memberService.create(dto)
+                () -> createMember()
         );
 
         // then

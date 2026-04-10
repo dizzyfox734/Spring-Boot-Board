@@ -79,7 +79,13 @@ public class MemberController {
         }
 
         try {
-            memberService.create(signupDto);
+            memberService.create(
+                    signupDto.getUsername(),
+                    signupDto.getPassword1(),
+                    signupDto.getName(),
+                    signupDto.getEmail(),
+                    signupDto.getEmailConfirm()
+            );
         } catch (DuplicateUsernameException e) {
             bindingResult.rejectValue("username", "duplicate", e.getMessage());
             return "member/signup";

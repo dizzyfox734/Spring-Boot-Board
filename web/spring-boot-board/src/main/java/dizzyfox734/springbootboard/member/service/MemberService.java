@@ -5,7 +5,6 @@ import dizzyfox734.springbootboard.mail.exception.ExpiredMailCertificationCodeEx
 import dizzyfox734.springbootboard.mail.exception.InvalidMailCertificationCodeException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
 import dizzyfox734.springbootboard.mail.service.MailService;
-import dizzyfox734.springbootboard.member.controller.dto.SignupDto;
 import dizzyfox734.springbootboard.member.domain.Authority;
 import dizzyfox734.springbootboard.member.domain.Member;
 import dizzyfox734.springbootboard.member.exception.*;
@@ -37,21 +36,25 @@ public class MemberService {
     /**
      * 회원 생성
      *
-     * @param signupDto 회원 가입에 필요한 정보를 담고 있는 DTO
+     * @param username 회원 아이디
+     * @param password 비밀번호
+     * @param name 이름
+     * @param email 이메일
+     * @param emailConfirm 이메일 인증코드
      * @return 생성된 회원의 id
      */
     @Transactional
-    public Long create(SignupDto signupDto) {
-        validateSignup(signupDto);
+    public Long create(String username, String password, String name, String email, String emailConfirm) {
+        validateSignup(username, email, emailConfirm);
 
         Authority authority = authorityRepository.findById("ROLE_USER")
                 .orElseThrow(() -> new AuthorityNotFoundException("ROLE_USER 권한이 존재하지 않습니다."));
 
         Member member = Member.create(
-                signupDto.getUsername(),
-                passwordEncoder.encode(signupDto.getPassword1()),
-                signupDto.getName(),
-                signupDto.getEmail(),
+                username,
+                passwordEncoder.encode(password),
+                name,
+                email,
                 Collections.singleton(authority)
         );
 
@@ -149,12 +152,14 @@ public class MemberService {
     /**
      * 회원가입 검증
      *
-     * @param signupDto 회원 가입에 필요한 정보를 담은 DTO
+     * @param username 회원 아이디
+     * @param email 이메일
+     * @param emailConfirm 이메일 인증코드
      */
-    private void validateSignup(SignupDto signupDto) {
-        validateUsernameNotDuplicated(signupDto.getUsername());
-        validateEmailNotDuplicated(signupDto.getEmail());
-        validateEmailVerified(signupDto.getEmail(), signupDto.getEmailConfirm());
+    private void validateSignup(String username, String email, String emailConfirm) {
+        validateUsernameNotDuplicated(username);
+        validateEmailNotDuplicated(email);
+        validateEmailVerified(email, emailConfirm);
     }
 
     private void validateUsernameNotDuplicated(String username) {

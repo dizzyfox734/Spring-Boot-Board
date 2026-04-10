@@ -5,7 +5,6 @@ import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.mail.exception.MailMessageBuildException;
 import dizzyfox734.springbootboard.mail.exception.MailSendException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
-import dizzyfox734.springbootboard.member.controller.dto.SignupDto;
 import dizzyfox734.springbootboard.member.domain.Member;
 import dizzyfox734.springbootboard.member.exception.DuplicateEmailException;
 import dizzyfox734.springbootboard.member.exception.DuplicateUsernameException;
@@ -175,7 +174,8 @@ class MemberControllerTest {
         @WithAnonymousUser
         @DisplayName("회원가입 입력값이 유효하면 메인 페이지로 리다이렉트한다")
         void redirectHome_whenSignupSucceeds() throws Exception {
-            given(memberService.create(any(SignupDto.class))).willReturn(1L);
+            given(memberService.create(anyString(), anyString(), anyString(), anyString(), anyString()))
+                    .willReturn(1L);
 
             mockMvc.perform(post("/member/signup")
                             .with(csrf())
@@ -188,10 +188,13 @@ class MemberControllerTest {
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrl("/"));
 
-            then(memberService).should().create(argThat(dto ->
-                    dto.getUsername().equals("testuser") &&
-                            dto.getEmail().equals("test@example.com")
-            ));
+            then(memberService).should().create(
+                    "testuser",
+                    "password123",
+                    "홍길동",
+                    "test@example.com",
+                    "A1B2C3D4"
+            );
         }
 
         @Test
@@ -204,7 +207,8 @@ class MemberControllerTest {
                     .andExpect(view().name("member/signup"))
                     .andExpect(model().hasErrors());
 
-            then(memberService).should(never()).create(any(SignupDto.class));
+            then(memberService).should(never())
+                    .create(anyString(), anyString(), anyString(), anyString(), anyString());
         }
 
         @Test
@@ -223,14 +227,15 @@ class MemberControllerTest {
                     .andExpect(view().name("member/signup"))
                     .andExpect(model().attributeHasFieldErrors("signupDto", "password2"));
 
-            then(memberService).should(never()).create(any(SignupDto.class));
+            then(memberService).should(never())
+                    .create(anyString(), anyString(), anyString(), anyString(), anyString());
         }
 
         @Test
         @WithAnonymousUser
         @DisplayName("아이디 중복 예외가 발생하면 username 필드 에러와 함께 회원가입 페이지를 보여준다")
         void returnSignupPageWithUsernameError_whenDuplicateUsernameExceptionOccurs() throws Exception {
-            given(memberService.create(any(SignupDto.class)))
+            given(memberService.create(anyString(), anyString(), anyString(), anyString(), anyString()))
                     .willThrow(new DuplicateUsernameException("이미 사용중인 아이디입니다."));
 
             mockMvc.perform(post("/member/signup")
@@ -250,7 +255,7 @@ class MemberControllerTest {
         @WithAnonymousUser
         @DisplayName("이메일 중복 예외가 발생하면 email 필드 에러와 함께 회원가입 페이지를 보여준다")
         void returnSignupPageWithEmailError_whenDuplicateEmailExceptionOccurs() throws Exception {
-            given(memberService.create(any(SignupDto.class)))
+            given(memberService.create(anyString(), anyString(), anyString(), anyString(), anyString()))
                     .willThrow(new DuplicateEmailException("이미 사용중인 이메일입니다."));
 
             mockMvc.perform(post("/member/signup")
@@ -270,7 +275,7 @@ class MemberControllerTest {
         @WithAnonymousUser
         @DisplayName("이메일 인증 미완료 예외가 발생하면 emailConfirm 필드 에러와 함께 회원가입 페이지를 보여준다")
         void returnSignupPageWithEmailConfirmError_whenEmailVerificationExceptionOccurs() throws Exception {
-            given(memberService.create(any(SignupDto.class)))
+            given(memberService.create(anyString(), anyString(), anyString(), anyString(), anyString()))
                     .willThrow(new EmailVerificationException("이메일 인증이 완료되지 않았습니다."));
 
             mockMvc.perform(post("/member/signup")
