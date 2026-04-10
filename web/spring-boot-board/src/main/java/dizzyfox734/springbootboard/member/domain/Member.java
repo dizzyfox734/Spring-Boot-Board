@@ -14,7 +14,7 @@ import java.util.Set;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@SQLDelete(sql = "UPDATE post SET deleted_date = NOW() WHERE id = ?")
+@SQLDelete(sql = "UPDATE member SET deleted_date = NOW() WHERE id = ?")
 @Where(clause = "deleted_date is null")
 public class Member extends BaseTimeEntity {
 
@@ -31,7 +31,7 @@ public class Member extends BaseTimeEntity {
     @Column(length = 10)
     private String name;
 
-    @Column(length = 50)
+    @Column(length = 50, unique = true)
     private String email;
 
     @ManyToMany
