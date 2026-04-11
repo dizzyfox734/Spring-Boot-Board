@@ -150,14 +150,14 @@ cd web/spring-boot-board
 
 ### 로컬 실행
 
-로컬 기본 프로필은 H2 DB와 메일 설정을 사용합니다. 메일 인증 기능을 사용하려면 SMTP 계정 정보를 환경 변수로 설정해야 합니다.
+로컬 실행은 `local` 프로필을 명시합니다. `local` 프로필은 H2 DB, H2 콘솔, 로컬 seed 데이터, 메일 설정을 사용합니다.
 
 ```bash
 export SPRING_MAIL_USERNAME=your-email@example.com
 export SPRING_MAIL_PASSWORD=your-app-password
 
 cd web/spring-boot-board
-./gradlew bootRun
+./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
 빌드만 수행할 때는 다음 명령을 사용합니다.
@@ -169,7 +169,7 @@ cd web/spring-boot-board
 
 ### Docker Compose 실행
 
-`docker/env`에 포트, 프로젝트 이름, 메일 계정 정보를 설정한 뒤 실행합니다.
+`docker/env`에 포트, 프로젝트 이름, DB 접속 정보, 메일 계정 정보를 설정한 뒤 실행합니다. Docker Compose의 `web` 서비스는 `real` 프로필로 실행됩니다.
 
 ```bash
 cd docker
@@ -189,8 +189,10 @@ docker compose --env-file env up -d --build
 | --- | --- |
 | `application.yml` | 기본 프로필 및 공통 설정 |
 | `yaml/application-local-db.yml` | 로컬 H2 DB 설정 |
-| `yaml/application-mail.yml` | SMTP 및 인증코드 설정 |
-| `yaml/application-real.properties` | 운영 DB 설정 예시 |
+| `yaml/application-mail.yml` | SMTP 및 인증코드 설정, 로컬 환경별 파일 |
+| `yaml/application-real-db.yml` | 운영 DB 설정 |
+| `db/seed/local-data.sql` | Git에 포함되는 로컬 기본 seed 데이터 |
+| `db/seed/local-account-data.sql` | Git에서 제외되는 로컬 계정 seed 데이터 |
 | `docker/env` | Docker Compose 환경 변수 |
 
 ## 배포

@@ -37,7 +37,7 @@ out/
 
 web/spring-boot-board/src/main/resources/yaml/application-real.properties
 web/spring-boot-board/src/main/resources/yaml/application-mail.yml
-web/spring-boot-board/src/main/resources/data.sql
+web/spring-boot-board/src/main/resources/db/seed/local-account-data.sql
 backup/
 database/
 docker/.env

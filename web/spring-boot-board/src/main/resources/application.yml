@@ -2,28 +2,15 @@ spring:
   config:
     import:
       - classpath:/yaml/application-local-db.yml
-      - classpath:/yaml/application-mail.yml
-      - optional:classpath:/yaml/application-real.properties
+      - optional:classpath:/yaml/application-mail.yml
+      - optional:classpath:/yaml/application-real-db.yml
   profiles:
     group:
       logging: dev, mail
       local: local-db, mail
-    active: local
+      real: real-db, mail
   devtools:
     add-properties: false
-
-#  jpa:
-#    database-platform: org.hibernate.dialect.MySQL8Dialect
-#    hibernate:
-#      ddl-auto: none
-#    properties:
-#      hibernate:
-#        dialect:
-#          storage_engine: innodb
-#        format_sql: true
-#        show_sql: true
-#    defer-datasource-initialization: true
-
 
   thymeleaf:
     prefix:
@@ -37,6 +24,12 @@ spring:
       #restart:
       #enabled: true
 
-  redis:
-    host: localhost #spring-boot-board_redis
-    port: 6379
+  data:
+    redis:
+      host: localhost #spring-boot-board_redis
+      port: 6379
+
+app:
+  security:
+    h2-console:
+      enabled: false

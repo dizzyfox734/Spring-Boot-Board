@@ -1,7 +1,7 @@
 spring:
   config:
     activate:
-      on-profile: local
+      on-profile: local-db
 
   datasource:
     driver-class-name: org.h2.Driver
@@ -23,3 +23,13 @@ spring:
         show_sql: true
         format_sql: true
     defer-datasource-initialization: true
+
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:/db/seed/local-data.sql,optional:file:src/main/resources/db/seed/local-account-data.sql
+
+app:
+  security:
+    h2-console:
+      enabled: true
