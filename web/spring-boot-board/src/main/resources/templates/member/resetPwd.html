@@ -1,0 +1,25 @@
+<html layout:decorate="~{layout}">
+
+<div layout:fragment="content" class="container my-3">
+    <div class="my-3 border-bottom">
+        <div>
+            <h4>새 비밀번호 설정</h4>
+            <h6>새 비밀번호를 입력한 뒤 저장해주세요.</h6>
+        </div>
+    </div>
+    <form th:action="@{/member/reset/pwd/confirm}" th:object="${passwordResetDto}" method="post">
+        <div th:replace="~{common/form_errors :: formErrorsFragment}"></div>
+        <input type="hidden" th:field="*{token}">
+        <div class="mb-3">
+            <label for="password1" class="form-label">새 비밀번호</label>
+            <input type="password" th:field="*{password1}" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label for="password2" class="form-label">새 비밀번호 확인</label>
+            <input type="password" th:field="*{password2}" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">비밀번호 변경</button>
+    </form>
+</div>
+
+</html>

@@ -1,6 +1,7 @@
 package dizzyfox734.springbootboard.member.controller;
 
 import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
+import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.mail.exception.MailMessageBuildException;
 import dizzyfox734.springbootboard.mail.exception.MailSendException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
@@ -20,6 +21,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -172,26 +174,50 @@ public class MemberController {
             return "member/findPwd";
         }
 
-        boolean existsMember = memberService.existsForPasswordReset(
-                findPwdDto.getName(),
-                findPwdDto.getEmail(),
-                findPwdDto.getUsername()
-        );
-
-        if (!existsMember) {
-            redirectAttributes.addAttribute("error", "해당 정보로 회원을 찾을 수 없습니다.");
-            return "redirect:/member/find/pwd";
-        }
-
         try {
-            memberService.resetPasswordAndSendEmail(
+            memberService.createPasswordResetTokenAndSendEmail(
                     findPwdDto.getName(),
                     findPwdDto.getEmail(),
                     findPwdDto.getUsername()
             );
-        } catch (MailSendException | MailMessageBuildException e) {
+        } catch (DataNotFoundException | MailSendException | MailMessageBuildException e) {
             redirectAttributes.addAttribute("error", e.getMessage());
             return "redirect:/member/find/pwd";
+        }
+
+        redirectAttributes.addAttribute("success", true);
+        return "redirect:/member/find/pwd";
+    }
+
+    @PreAuthorize("isAnonymous()")
+    @GetMapping("/reset/pwd/confirm")
+    public String resetPwdConfirm(@RequestParam("token") String token,
+                                  PasswordResetDto passwordResetDto,
+                                  RedirectAttributes redirectAttributes) {
+        try {
+            memberService.getUsernameByPasswordResetToken(token);
+        } catch (InvalidRequestException e) {
+            redirectAttributes.addAttribute("error", e.getMessage());
+            return "redirect:/member/find/pwd";
+        }
+
+        passwordResetDto.setToken(token);
+        return "member/resetPwd";
+    }
+
+    @PreAuthorize("isAnonymous()")
+    @PostMapping("/reset/pwd/confirm")
+    public String resetPwdConfirm(@Valid PasswordResetDto passwordResetDto,
+                                  BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return "member/resetPwd";
+        }
+
+        try {
+            memberService.resetPasswordWithToken(passwordResetDto.getToken(), passwordResetDto.getPassword1());
+        } catch (InvalidRequestException e) {
+            bindingResult.reject("passwordResetToken", e.getMessage());
+            return "member/resetPwd";
         }
 
         return "redirect:/member/login";

@@ -74,6 +74,7 @@ public class SecurityConfig {
                                     "/member/find/id",
                                     "/member/find/pwd",
                                     "/member/reset/pwd",
+                                    "/member/reset/pwd/confirm",
                                     "/member/signup/sendMail"
                             ).permitAll()
 

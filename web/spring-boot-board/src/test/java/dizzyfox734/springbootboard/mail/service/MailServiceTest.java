@@ -1,5 +1,6 @@
 package dizzyfox734.springbootboard.mail.service;
 
+import dizzyfox734.springbootboard.mail.domain.MailProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,68 +20,77 @@ public class MailServiceTest {
     @Mock
     private MailSenderService mailSenderService;
 
+    @Mock
+    private MailProperties mailProperties;
+
     @InjectMocks
     private MailService mailService;
 
     @Test
-    @DisplayName("sendTemporaryPasswordEmail(): 임시 비밀번호 메일을 생성해 발송한다")
-    public void shouldSendTemporaryPasswordEmail_whenRequestIsValid() {
+    @DisplayName("sendPasswordResetEmail(): 비밀번호 재설정 메일을 생성해 발송한다")
+    public void shouldSendPasswordResetEmail_whenRequestIsValid() {
         // given
         String email = "test@example.com";
-        String temporaryPassword = "temporarypassword";
+        String resetToken = "reset-token";
+        String resetLink = "http://localhost:8080/member/reset/pwd/confirm?token=reset-token";
         String content = "test content";
 
-        when(mailContentBuilder.buildTemporaryPasswordContent(temporaryPassword))
+        when(mailProperties.getPasswordResetBaseUrl()).thenReturn("http://localhost:8080");
+        when(mailContentBuilder.buildPasswordResetContent(resetLink))
                 .thenReturn(content);
 
         // when
-        mailService.sendTemporaryPasswordEmail(email, temporaryPassword);
+        mailService.sendPasswordResetEmail(email, resetToken);
 
         // then
-        verify(mailContentBuilder, times(1)).buildTemporaryPasswordContent(temporaryPassword);
-        verify(mailSenderService, times(1)).send(email, "임시 비밀번호 안내", content);
+        verify(mailContentBuilder).buildPasswordResetContent(resetLink);
+        verify(mailSenderService).send(email, "비밀번호 재설정 안내", content);
     }
 
     @Test
-    @DisplayName("sendTemporaryPasswordEmail(): 임시 비밀번호 본문 생성에 실패하면 발송하지 않는다")
-    public void shouldPropagateExceptionAndStop_whenTemporaryPasswordContentBuildFails() {
+    @DisplayName("sendPasswordResetEmail(): 메일 본문 생성에 실패하면 발송하지 않는다")
+    public void shouldPropagateExceptionAndStop_whenPasswordResetContentBuildFails() {
         // given
         String email = "test@example.com";
-        String temporaryPassword = "temporarypassword";
+        String resetToken = "reset-token";
+        String resetLink = "http://localhost:8080/member/reset/pwd/confirm?token=reset-token";
 
-        when(mailContentBuilder.buildTemporaryPasswordContent(temporaryPassword))
-                .thenThrow(new RuntimeException("임시 비밀번호 생성 실패"));
+        when(mailProperties.getPasswordResetBaseUrl()).thenReturn("http://localhost:8080");
+        when(mailContentBuilder.buildPasswordResetContent(resetLink))
+                .thenThrow(new RuntimeException("비밀번호 재설정 본문 생성 실패"));
 
         // when
         assertThrows(RuntimeException.class,
-                () -> mailService.sendTemporaryPasswordEmail(email, temporaryPassword));
+                () -> mailService.sendPasswordResetEmail(email, resetToken));
 
         // then
-        verify(mailContentBuilder, times(1)).buildTemporaryPasswordContent(temporaryPassword);
+        verify(mailContentBuilder).buildPasswordResetContent(resetLink);
         verify(mailSenderService, never()).send(anyString(), anyString(), anyString());
     }
 
     @Test
-    @DisplayName("sendTemporaryPasswordEmail(): 메일 발송에 실패하면 예외를 전파한다")
-    public void shouldPropagateException_whenTemporaryPasswordMailSendFails() {
+    @DisplayName("sendPasswordResetEmail(): 메일 발송에 실패하면 예외를 전파한다")
+    public void shouldPropagateException_whenPasswordResetMailSendFails() {
         // given
         String email = "test@example.com";
-        String temporaryPassword = "temporarypassword";
+        String resetToken = "reset-token";
+        String resetLink = "http://localhost:8080/member/reset/pwd/confirm?token=reset-token";
         String content = "test content";
 
-        when(mailContentBuilder.buildTemporaryPasswordContent(temporaryPassword))
+        when(mailProperties.getPasswordResetBaseUrl()).thenReturn("http://localhost:8080");
+        when(mailContentBuilder.buildPasswordResetContent(resetLink))
                 .thenReturn(content);
 
         doThrow(new RuntimeException("이메일 발송 실패"))
                 .when(mailSenderService)
-                .send(email, "임시 비밀번호 안내", content);
+                .send(email, "비밀번호 재설정 안내", content);
 
         // when
         assertThrows(RuntimeException.class,
-                () -> mailService.sendTemporaryPasswordEmail(email, temporaryPassword));
+                () -> mailService.sendPasswordResetEmail(email, resetToken));
 
         // then
-        verify(mailContentBuilder, times(1)).buildTemporaryPasswordContent(temporaryPassword);
-        verify(mailSenderService, times(1)).send(email, "임시 비밀번호 안내", content);
+        verify(mailContentBuilder).buildPasswordResetContent(resetLink);
+        verify(mailSenderService).send(email, "비밀번호 재설정 안내", content);
     }
 }

@@ -1,6 +1,8 @@
 package dizzyfox734.springbootboard.member.service;
 
 import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
+import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
+import dizzyfox734.springbootboard.mail.domain.MailProperties;
 import dizzyfox734.springbootboard.mail.exception.ExpiredMailCertificationCodeException;
 import dizzyfox734.springbootboard.mail.exception.InvalidMailCertificationCodeException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
@@ -10,28 +12,30 @@ import dizzyfox734.springbootboard.member.domain.Member;
 import dizzyfox734.springbootboard.member.exception.*;
 import dizzyfox734.springbootboard.member.repository.AuthorityRepository;
 import dizzyfox734.springbootboard.member.repository.MemberRepository;
+import dizzyfox734.springbootboard.member.repository.PasswordResetTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Collections;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 @Service
 public class MemberService {
 
-    private static final int TEMPORARY_PASSWORD_LENGTH = 8;
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private static final String TEMPORARY_PASSWORD_CHARS =
-            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private static final String PASSWORD_RESET_TOKEN_INVALID_MESSAGE =
+            "유효하지 않거나 만료된 비밀번호 재설정 링크입니다.";
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
     private final MailCertificationService mailCertificationService;
     private final AuthorityRepository authorityRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final MailProperties mailProperties;
 
     /**
      * 회원 생성
@@ -103,50 +107,48 @@ public class MemberService {
                 .orElseThrow(() -> new DataNotFoundException("No user found with the provided name and email"));
     }
 
-    /**
-     * 이름, 이메일, 아이디로 회원 정보를 조회하여 존재 여부 확인
-     *
-     * @param name 이름
-     * @param email 이메일
-     * @param username 아이디
-     * @return 회원이 존재하면 true, 아니면 false
-     */
-    @Transactional(readOnly = true)
-    public boolean existsForPasswordReset(String name, String email, String username) {
-        return memberRepository.findByNameAndEmailAndUsername(name, email, username).isPresent();
-    }
-
-    /**
-     * 임시 비밀번호를 생성하여 해당 이메일로 전송
-     *
-     * @return 임시 비밀번호
-     */
     @Transactional
-    public String resetPasswordAndSendEmail(String name, String email, String username) {
-        Member member = memberRepository.findByNameAndEmailAndUsername(name, email, username)
-                .orElseThrow(() -> new DataNotFoundException("No user found with the provided name and email"));
+    public void createPasswordResetTokenAndSendEmail(String name, String email, String username) {
+        Member member = findMemberForPasswordReset(name, email, username);
+        String previousToken = passwordResetTokenRepository.getTokenByUsername(member.getUsername());
+        Duration previousExpiration = previousToken == null
+                ? null
+                : passwordResetTokenRepository.getExpirationByUsername(member.getUsername());
+        String resetToken = generatePasswordResetToken();
+        Duration expiration = Duration.ofSeconds(mailProperties.getPasswordResetExpirationSeconds());
 
-        String temporaryPassword = generateTemporaryPassword();
-        member.changeEncodedPassword(passwordEncoder.encode(temporaryPassword));
-        memberRepository.save(member);
+        passwordResetTokenRepository.save(member.getUsername(), resetToken, expiration);
 
-        mailService.sendTemporaryPasswordEmail(email, temporaryPassword);
-        return temporaryPassword;
+        try {
+            mailService.sendPasswordResetEmail(member.getEmail(), resetToken);
+        } catch (RuntimeException e) {
+            restorePreviousPasswordResetToken(member.getUsername(), resetToken, previousToken, previousExpiration);
+            throw e;
+        }
     }
 
-    /**
-     * 임시 비밀번호를 생성
-     *
-     * @return 생성된 임시 비밀번호
-     */
-    private String generateTemporaryPassword() {
-        StringBuilder password = new StringBuilder();
+    @Transactional(readOnly = true)
+    public String getUsernameByPasswordResetToken(String token) {
+        validatePasswordResetToken(token);
 
-        for (int i = 0; i < TEMPORARY_PASSWORD_LENGTH; i++) {
-            password.append(TEMPORARY_PASSWORD_CHARS.charAt(RANDOM.nextInt(TEMPORARY_PASSWORD_CHARS.length())));
+        String username = passwordResetTokenRepository.getUsernameByToken(token);
+        if (username == null || username.isBlank()) {
+            throw new InvalidRequestException(PASSWORD_RESET_TOKEN_INVALID_MESSAGE);
         }
 
-        return password.toString();
+        return username;
+    }
+
+    @Transactional
+    public Long resetPasswordWithToken(String token, String newPassword) {
+        String username = getUsernameByPasswordResetToken(token);
+        Member member = getMember(username);
+
+        member.changeEncodedPassword(passwordEncoder.encode(newPassword));
+        memberRepository.save(member);
+        passwordResetTokenRepository.removeByToken(token);
+
+        return member.getId();
     }
 
     /**
@@ -160,6 +162,31 @@ public class MemberService {
         validateUsernameNotDuplicated(username);
         validateEmailNotDuplicated(email);
         validateEmailVerified(email, emailConfirm);
+    }
+
+    private Member findMemberForPasswordReset(String name, String email, String username) {
+        return memberRepository.findByNameAndEmailAndUsername(name, email, username)
+                .orElseThrow(() -> new DataNotFoundException("No user found with the provided name and email"));
+    }
+
+    private String generatePasswordResetToken() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private void restorePreviousPasswordResetToken(String username,
+                                                   String newToken,
+                                                   String previousToken,
+                                                   Duration previousExpiration) {
+        passwordResetTokenRepository.removeByToken(newToken);
+        if (previousToken != null && previousExpiration != null) {
+            passwordResetTokenRepository.save(username, previousToken, previousExpiration);
+        }
+    }
+
+    private void validatePasswordResetToken(String token) {
+        if (token == null || token.isBlank()) {
+            throw new InvalidRequestException(PASSWORD_RESET_TOKEN_INVALID_MESSAGE);
+        }
     }
 
     private void validateUsernameNotDuplicated(String username) {

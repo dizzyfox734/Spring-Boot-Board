@@ -4,11 +4,16 @@
     <div class="my-3 border-bottom">
         <div>
             <h4>비밀번호 찾기</h4>
-            <h6>가입 시 입력한 이름과 이메일을 입력하면 해당 이메일로 임시 비밀번호가 발송됩니다.</h6>
-            <h6>해당 임시 비밀번호로 로그인 후 비밀번호를 변경해주시기 바랍니다.</h6>
+            <h6>가입 시 입력한 이름과 이메일을 입력하면 비밀번호 재설정 링크가 이메일로 발송됩니다.</h6>
+            <h6>메일의 링크에서 새 비밀번호를 설정해주세요.</h6>
         </div>
     </div>
     <form th:action="@{/member/reset/pwd}" th:object="${findPwdDto}" method="post">
+        <div th:if="${param.success}">
+            <div class="alert alert-success pb-0">
+                <p>비밀번호 재설정 메일을 발송했습니다.</p>
+            </div>
+        </div>
         <div th:if="${param.error}">
             <div class="alert alert-danger pb-0">
                 <p th:text="${param.error}"></p>

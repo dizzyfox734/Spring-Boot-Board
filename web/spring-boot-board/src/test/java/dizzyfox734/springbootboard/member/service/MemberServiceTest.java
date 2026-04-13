@@ -1,6 +1,8 @@
 package dizzyfox734.springbootboard.member.service;
 
 import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
+import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
+import dizzyfox734.springbootboard.mail.domain.MailProperties;
 import dizzyfox734.springbootboard.mail.exception.ExpiredMailCertificationCodeException;
 import dizzyfox734.springbootboard.mail.exception.InvalidMailCertificationCodeException;
 import dizzyfox734.springbootboard.mail.exception.MailMessageBuildException;
@@ -15,6 +17,7 @@ import dizzyfox734.springbootboard.member.exception.DuplicateUsernameException;
 import dizzyfox734.springbootboard.member.exception.EmailVerificationException;
 import dizzyfox734.springbootboard.member.repository.AuthorityRepository;
 import dizzyfox734.springbootboard.member.repository.MemberRepository;
+import dizzyfox734.springbootboard.member.repository.PasswordResetTokenRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 
@@ -49,6 +53,12 @@ class MemberServiceTest {
 
     @Mock
     private AuthorityRepository authorityRepository;
+
+    @Mock
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Mock
+    private MailProperties mailProperties;
 
     @InjectMocks
     private MemberService memberService;
@@ -471,55 +481,8 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("existsForPasswordReset(): 이름, 이메일, 아이디가 모두 일치하면 회원이 존재함을 반환한다")
-    void shouldReturnExists_whenNameEmailAndUsernameMatch() {
-        // given
-        String name = "홍길동";
-        String email = "test@example.com";
-        String username = "testuser";
-
-        Member existingMember = createMember(
-                username,
-                "encodedPassword",
-                name,
-                email
-        );
-
-        when(memberRepository.findByNameAndEmailAndUsername(name, email, username))
-                .thenReturn(Optional.of(existingMember));
-
-        // when
-        boolean result = memberService.existsForPasswordReset(name, email, username);
-
-        // then
-        assertTrue(result);
-        verify(memberRepository).findByNameAndEmailAndUsername(name, email, username);
-        verify(memberRepository, never()).save(any(Member.class));
-    }
-
-    @Test
-    @DisplayName("existsForPasswordReset(): 일치하는 회원이 없으면 회원이 존재하지 않음을 반환한다")
-    void shouldReturnNotExists_whenNoMemberMatchesAllFields() {
-        // given
-        String name = "홍길동";
-        String email = "test@example.com";
-        String username = "testuser";
-
-        when(memberRepository.findByNameAndEmailAndUsername(name, email, username))
-                .thenReturn(Optional.empty());
-
-        // when
-        boolean result = memberService.existsForPasswordReset(name, email, username);
-
-        // then
-        assertFalse(result);
-        verify(memberRepository).findByNameAndEmailAndUsername(name, email, username);
-        verify(memberRepository, never()).save(any(Member.class));
-    }
-
-    @Test
-    @DisplayName("resetPasswordAndSendEmail(): 일치하는 회원이 있으면 임시 비밀번호를 생성하고 저장한 뒤 이메일로 전송한다")
-    void shouldResetPasswordAndSendTemporaryPasswordEmail_whenMemberExists() {
+    @DisplayName("createPasswordResetTokenAndSendEmail(): 일치하는 회원이 있으면 토큰을 저장하고 재설정 메일을 발송한다")
+    void shouldCreatePasswordResetTokenAndSendEmail_whenMemberExists() {
         // given
         String name = "홍길동";
         String email = "test@example.com";
@@ -534,31 +497,19 @@ class MemberServiceTest {
 
         when(memberRepository.findByNameAndEmailAndUsername(name, email, username))
                 .thenReturn(Optional.of(member));
-        when(passwordEncoder.encode(anyString()))
-                .thenReturn("encodedPassword");
-        when(memberRepository.save(any(Member.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(mailProperties.getPasswordResetExpirationSeconds()).thenReturn(1800L);
 
         // when
-        String result = memberService.resetPasswordAndSendEmail(name, email, username);
+        memberService.createPasswordResetTokenAndSendEmail(name, email, username);
 
         // then
-        assertNotNull(result);
-        assertFalse(result.isBlank());
-
-        verify(passwordEncoder).encode(result);
-        verify(memberRepository).save(member);
-        verify(mailService).sendTemporaryPasswordEmail(email, result);
-
-        ArgumentCaptor<Member> captor = ArgumentCaptor.forClass(Member.class);
-        verify(memberRepository).save(captor.capture());
-
-        Member savedMember = captor.getValue();
-        assertEquals("encodedPassword", savedMember.getPassword());
+        verify(passwordResetTokenRepository).save(eq("testuser"), anyString(), any(Duration.class));
+        verify(mailService).sendPasswordResetEmail(eq(email), anyString());
+        verify(memberRepository, never()).save(any(Member.class));
     }
 
     @Test
-    @DisplayName("resetPasswordAndSendEmail(): 일치하는 회원이 없으면 DataNotFoundException이 발생한다")
+    @DisplayName("createPasswordResetTokenAndSendEmail(): 일치하는 회원이 없으면 DataNotFoundException이 발생한다")
     void shouldThrowDataNotFoundException_whenNoMemberMatchesForPasswordReset() {
         // given
         String name = "홍길동";
@@ -571,19 +522,19 @@ class MemberServiceTest {
         // when
         DataNotFoundException exception = assertThrows(
                 DataNotFoundException.class,
-                () -> memberService.resetPasswordAndSendEmail(name, email, username)
+                () -> memberService.createPasswordResetTokenAndSendEmail(name, email, username)
         );
 
         // then
         assertEquals("No user found with the provided name and email", exception.getMessage());
-        verify(passwordEncoder, never()).encode(anyString());
+        verify(passwordResetTokenRepository, never()).save(anyString(), anyString(), any());
         verify(memberRepository, never()).save(any(Member.class));
-        verify(mailService, never()).sendTemporaryPasswordEmail(eq(email), anyString());
+        verify(mailService, never()).sendPasswordResetEmail(eq(email), anyString());
     }
 
     @Test
-    @DisplayName("resetPasswordAndSendEmail(): 메일 전송 실패 시 MailSendException이 전파된다")
-    void shouldPropagateMailSendException_whenTemporaryPasswordEmailSendFails() {
+    @DisplayName("createPasswordResetTokenAndSendEmail(): 메일 전송 실패 시 이전 토큰을 복구하고 예외를 전파한다")
+    void shouldRestorePreviousTokenAndPropagateMailSendException_whenPasswordResetMailSendFails() {
         // given
         String name = "홍길동";
         String email = "test@example.com";
@@ -598,62 +549,66 @@ class MemberServiceTest {
 
         when(memberRepository.findByNameAndEmailAndUsername(name, email, username))
                 .thenReturn(Optional.of(member));
-        when(passwordEncoder.encode(anyString()))
-                .thenReturn("encodedPassword");
-        when(memberRepository.save(any(Member.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(mailProperties.getPasswordResetExpirationSeconds()).thenReturn(1800L);
+        when(passwordResetTokenRepository.getTokenByUsername("testuser")).thenReturn("previous-token");
+        when(passwordResetTokenRepository.getExpirationByUsername("testuser")).thenReturn(Duration.ofSeconds(300));
         doThrow(new MailSendException("이메일 전송에 실패했습니다.", new RuntimeException("smtp error")))
                 .when(mailService)
-                .sendTemporaryPasswordEmail(eq(email), anyString());
+                .sendPasswordResetEmail(eq(email), anyString());
 
         // when
         MailSendException exception = assertThrows(
                 MailSendException.class,
-                () -> memberService.resetPasswordAndSendEmail(name, email, username)
+                () -> memberService.createPasswordResetTokenAndSendEmail(name, email, username)
         );
 
         // then
         assertEquals("이메일 전송에 실패했습니다.", exception.getMessage());
-        verify(passwordEncoder).encode(anyString());
-        verify(memberRepository).save(any(Member.class));
-        verify(mailService).sendTemporaryPasswordEmail(eq(email), anyString());
+        verify(passwordResetTokenRepository, times(2)).save(eq("testuser"), anyString(), any(Duration.class));
+        verify(passwordResetTokenRepository).save("testuser", "previous-token", Duration.ofSeconds(300));
+        verify(mailService).sendPasswordResetEmail(eq(email), anyString());
     }
 
     @Test
-    @DisplayName("resetPasswordAndSendEmail(): 메시지 생성 실패 시 MailMessageBuildException이 전파된다")
-    void shouldPropagateMailMessageBuildException_whenTemporaryPasswordMessageBuildFails() {
-        // given
-        String name = "홍길동";
-        String email = "test@example.com";
-        String username = "testuser";
+    @DisplayName("getUsernameByPasswordResetToken(): 저장된 토큰이 있으면 사용자명을 반환한다")
+    void shouldReturnUsername_whenPasswordResetTokenExists() {
+        when(passwordResetTokenRepository.getUsernameByToken("valid-token")).thenReturn("testuser");
 
-        Member member = createMember(
-                username,
-                "oldEncodedPassword",
-                name,
-                email
+        String result = memberService.getUsernameByPasswordResetToken("valid-token");
+
+        assertEquals("testuser", result);
+        verify(passwordResetTokenRepository).getUsernameByToken("valid-token");
+    }
+
+    @Test
+    @DisplayName("getUsernameByPasswordResetToken(): 토큰이 없으면 InvalidRequestException이 발생한다")
+    void shouldThrowInvalidRequestException_whenPasswordResetTokenDoesNotExist() {
+        when(passwordResetTokenRepository.getUsernameByToken("invalid-token")).thenReturn(null);
+
+        InvalidRequestException exception = assertThrows(
+                InvalidRequestException.class,
+                () -> memberService.getUsernameByPasswordResetToken("invalid-token")
         );
 
-        when(memberRepository.findByNameAndEmailAndUsername(name, email, username))
-                .thenReturn(Optional.of(member));
-        when(passwordEncoder.encode(anyString()))
-                .thenReturn("encodedPassword");
-        when(memberRepository.save(any(Member.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-        doThrow(new MailMessageBuildException("이메일 메시지 생성에 실패했습니다.", new RuntimeException("mime error")))
-                .when(mailService)
-                .sendTemporaryPasswordEmail(eq(email), anyString());
+        assertEquals("유효하지 않거나 만료된 비밀번호 재설정 링크입니다.", exception.getMessage());
+    }
 
-        // when
-        MailMessageBuildException exception = assertThrows(
-                MailMessageBuildException.class,
-                () -> memberService.resetPasswordAndSendEmail(name, email, username)
-        );
+    @Test
+    @DisplayName("resetPasswordWithToken(): 유효한 토큰이면 비밀번호를 변경하고 토큰을 삭제한다")
+    void shouldResetPasswordWithToken_whenPasswordResetTokenIsValid() {
+        Member member = createMember("testuser", "oldEncodedPassword", "홍길동", "test@example.com");
+        setMemberId(member, 1L);
 
-        // then
-        assertEquals("이메일 메시지 생성에 실패했습니다.", exception.getMessage());
-        verify(passwordEncoder).encode(anyString());
-        verify(memberRepository).save(any(Member.class));
-        verify(mailService).sendTemporaryPasswordEmail(eq(email), anyString());
+        when(passwordResetTokenRepository.getUsernameByToken("valid-token")).thenReturn("testuser");
+        when(memberRepository.findOneWithAuthoritiesByUsername("testuser")).thenReturn(Optional.of(member));
+        when(passwordEncoder.encode("newPassword123")).thenReturn("encodedPassword");
+        when(memberRepository.save(any(Member.class))).thenReturn(member);
+
+        Long result = memberService.resetPasswordWithToken("valid-token", "newPassword123");
+
+        assertEquals(1L, result);
+        verify(passwordEncoder).encode("newPassword123");
+        verify(memberRepository).save(member);
+        verify(passwordResetTokenRepository).removeByToken("valid-token");
     }
 }

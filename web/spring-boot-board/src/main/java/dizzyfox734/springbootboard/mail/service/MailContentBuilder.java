@@ -18,11 +18,13 @@ public class MailContentBuilder {
                 """.formatted(certificationCode);
     }
 
-    public String buildTemporaryPasswordContent(String temporaryPassword) {
+    public String buildPasswordResetContent(String resetLink) {
         return """
-                임시 비밀번호는 <strong>%s</strong>입니다.<br>
-                로그인 후 반드시 비밀번호를 변경해주세요.
-                """.formatted(temporaryPassword);
+                <p>아래 링크를 눌러 새 비밀번호를 설정해주세요.</p>
+                <br>
+                <a href="%s">%s</a>
+                <p>링크가 만료되었다면 비밀번호 찾기를 다시 요청해주세요.</p>
+                """.formatted(resetLink, resetLink);
     }
 
     public String wrapAsHtml(String content) {

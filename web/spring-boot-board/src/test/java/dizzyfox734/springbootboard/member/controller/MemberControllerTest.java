@@ -2,6 +2,7 @@ package dizzyfox734.springbootboard.member.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
+import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.mail.exception.MailMessageBuildException;
 import dizzyfox734.springbootboard.mail.exception.MailSendException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
@@ -70,6 +71,7 @@ class MemberControllerTest {
                                     "/member/find/id",
                                     "/member/find/pwd",
                                     "/member/reset/pwd",
+                                    "/member/reset/pwd/confirm",
                                     "/member/signup/sendMail"
                             ).anonymous()
                                     .anyRequest().authenticated()
@@ -496,12 +498,10 @@ class MemberControllerTest {
 
         @Test
         @WithAnonymousUser
-        @DisplayName("비밀번호 재설정 대상 회원이 존재하고 임시 비밀번호 메일 발송에 성공하면 로그인 페이지로 리다이렉트한다")
-        void redirectToLogin_whenResetPasswordSucceeds() throws Exception {
-            given(memberService.existsForPasswordReset(anyString(), anyString(), anyString()))
-                    .willReturn(true);
-            given(memberService.resetPasswordAndSendEmail(anyString(), anyString(), anyString()))
-                    .willReturn("A1B2C3D4");
+        @DisplayName("비밀번호 재설정 대상 회원이 존재하고 메일 발송에 성공하면 성공 파라미터와 함께 리다이렉트한다")
+        void redirectToFindPwdWithSuccess_whenResetPasswordSucceeds() throws Exception {
+            doNothing().when(memberService)
+                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString());
 
             mockMvc.perform(post("/member/reset/pwd")
                             .with(csrf())
@@ -509,18 +509,18 @@ class MemberControllerTest {
                             .param("name", "홍길동")
                             .param("email", "test@example.com"))
                     .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/member/login"));
+                    .andExpect(redirectedUrl("/member/find/pwd?success=true"));
 
-            then(memberService).should().existsForPasswordReset("홍길동", "test@example.com", "testuser");
-            then(memberService).should().resetPasswordAndSendEmail("홍길동", "test@example.com", "testuser");
+            then(memberService).should().createPasswordResetTokenAndSendEmail("홍길동", "test@example.com", "testuser");
         }
 
         @Test
         @WithAnonymousUser
         @DisplayName("비밀번호 재설정 대상 회원이 없으면 에러 메시지와 함께 비밀번호 찾기 페이지로 리다이렉트한다")
         void redirectToFindPwdWithError_whenResetTargetDoesNotExist() throws Exception {
-            given(memberService.existsForPasswordReset(anyString(), anyString(), anyString()))
-                    .willReturn(false);
+            doThrow(new DataNotFoundException("해당 정보로 회원을 찾을 수 없습니다."))
+                    .when(memberService)
+                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString());
 
             mockMvc.perform(post("/member/reset/pwd")
                             .with(csrf())
@@ -530,18 +530,16 @@ class MemberControllerTest {
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
 
-            then(memberService).should().existsForPasswordReset("홍길동", "test@example.com", "testuser");
-            then(memberService).should(never()).resetPasswordAndSendEmail(anyString(), anyString(), anyString());
+            then(memberService).should().createPasswordResetTokenAndSendEmail("홍길동", "test@example.com", "testuser");
         }
 
         @Test
         @WithAnonymousUser
         @DisplayName("메일 전송 예외가 발생하면 에러 메시지와 함께 비밀번호 찾기 페이지로 리다이렉트한다")
         void redirectToFindPwdWithError_whenMailSendExceptionOccurs() throws Exception {
-            given(memberService.existsForPasswordReset(anyString(), anyString(), anyString()))
-                    .willReturn(true);
-            given(memberService.resetPasswordAndSendEmail(anyString(), anyString(), anyString()))
-                    .willThrow(new MailSendException("이메일 전송에 실패했습니다.", new RuntimeException("SMTP Error")));
+            doThrow(new MailSendException("이메일 전송에 실패했습니다.", new RuntimeException("SMTP Error")))
+                    .when(memberService)
+                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString());
 
             mockMvc.perform(post("/member/reset/pwd")
                             .with(csrf())
@@ -551,18 +549,16 @@ class MemberControllerTest {
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
 
-            then(memberService).should().existsForPasswordReset("홍길동", "test@example.com", "testuser");
-            then(memberService).should().resetPasswordAndSendEmail("홍길동", "test@example.com", "testuser");
+            then(memberService).should().createPasswordResetTokenAndSendEmail("홍길동", "test@example.com", "testuser");
         }
 
         @Test
         @WithAnonymousUser
         @DisplayName("메일 본문 생성 예외가 발생하면 에러 메시지와 함께 비밀번호 찾기 페이지로 리다이렉트한다")
         void redirectToFindPwdWithError_whenMailMessageBuildExceptionOccurs() throws Exception {
-            given(memberService.existsForPasswordReset(anyString(), anyString(), anyString()))
-                    .willReturn(true);
-            given(memberService.resetPasswordAndSendEmail(anyString(), anyString(), anyString()))
-                    .willThrow(new MailMessageBuildException("이메일 메시지 생성에 실패했습니다.", new RuntimeException("mime error")));
+            doThrow(new MailMessageBuildException("이메일 메시지 생성에 실패했습니다.", new RuntimeException("mime error")))
+                    .when(memberService)
+                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString());
 
             mockMvc.perform(post("/member/reset/pwd")
                             .with(csrf())
@@ -572,8 +568,7 @@ class MemberControllerTest {
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
 
-            then(memberService).should().existsForPasswordReset("홍길동", "test@example.com", "testuser");
-            then(memberService).should().resetPasswordAndSendEmail("홍길동", "test@example.com", "testuser");
+            then(memberService).should().createPasswordResetTokenAndSendEmail("홍길동", "test@example.com", "testuser");
         }
 
         @Test
@@ -586,8 +581,7 @@ class MemberControllerTest {
                     .andExpect(view().name("member/findPwd"))
                     .andExpect(model().hasErrors());
 
-            then(memberService).should(never()).existsForPasswordReset(anyString(), anyString(), anyString());
-            then(memberService).should(never()).resetPasswordAndSendEmail(anyString(), anyString(), anyString());
+            then(memberService).should(never()).createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString());
         }
 
         @Test
@@ -597,6 +591,87 @@ class MemberControllerTest {
             mockMvc.perform(post("/member/reset/pwd")
                             .with(csrf()))
                     .andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /member/reset/pwd/confirm")
+    class ResetPwdConfirmGetTest {
+
+        @Test
+        @WithAnonymousUser
+        @DisplayName("유효한 토큰이면 비밀번호 재설정 페이지를 보여준다")
+        void showResetPwdPage_whenTokenIsValid() throws Exception {
+            given(memberService.getUsernameByPasswordResetToken("valid-token"))
+                    .willReturn("testuser");
+
+            mockMvc.perform(get("/member/reset/pwd/confirm").param("token", "valid-token"))
+                    .andExpect(status().isOk())
+                    .andExpect(view().name("member/resetPwd"))
+                    .andExpect(model().attributeExists("passwordResetDto"));
+        }
+
+        @Test
+        @WithAnonymousUser
+        @DisplayName("유효하지 않은 토큰이면 에러와 함께 비밀번호 찾기 페이지로 리다이렉트한다")
+        void redirectToFindPwd_whenTokenIsInvalid() throws Exception {
+            given(memberService.getUsernameByPasswordResetToken("invalid-token"))
+                    .willThrow(new InvalidRequestException("유효하지 않거나 만료된 비밀번호 재설정 링크입니다."));
+
+            mockMvc.perform(get("/member/reset/pwd/confirm").param("token", "invalid-token"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /member/reset/pwd/confirm")
+    class ResetPwdConfirmPostTest {
+
+        @Test
+        @WithAnonymousUser
+        @DisplayName("입력값이 유효하면 비밀번호를 변경하고 로그인 페이지로 리다이렉트한다")
+        void redirectToLogin_whenPasswordResetConfirmSucceeds() throws Exception {
+            given(memberService.resetPasswordWithToken("valid-token", "password123"))
+                    .willReturn(1L);
+
+            mockMvc.perform(post("/member/reset/pwd/confirm")
+                            .with(csrf())
+                            .param("token", "valid-token")
+                            .param("password1", "password123")
+                            .param("password2", "password123"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/member/login"));
+        }
+
+        @Test
+        @WithAnonymousUser
+        @DisplayName("입력값 검증에 실패하면 비밀번호 재설정 페이지를 다시 보여준다")
+        void returnResetPwdPage_whenPasswordResetDtoIsInvalid() throws Exception {
+            mockMvc.perform(post("/member/reset/pwd/confirm")
+                            .with(csrf()))
+                    .andExpect(status().isOk())
+                    .andExpect(view().name("member/resetPwd"))
+                    .andExpect(model().hasErrors());
+
+            then(memberService).should(never()).resetPasswordWithToken(anyString(), anyString());
+        }
+
+        @Test
+        @WithAnonymousUser
+        @DisplayName("유효하지 않은 토큰이면 전역 에러와 함께 비밀번호 재설정 페이지를 다시 보여준다")
+        void returnResetPwdPageWithGlobalError_whenTokenIsInvalid() throws Exception {
+            given(memberService.resetPasswordWithToken("invalid-token", "password123"))
+                    .willThrow(new InvalidRequestException("유효하지 않거나 만료된 비밀번호 재설정 링크입니다."));
+
+            mockMvc.perform(post("/member/reset/pwd/confirm")
+                            .with(csrf())
+                            .param("token", "invalid-token")
+                            .param("password1", "password123")
+                            .param("password2", "password123"))
+                    .andExpect(status().isOk())
+                    .andExpect(view().name("member/resetPwd"))
+                    .andExpect(model().hasErrors());
         }
     }
 
