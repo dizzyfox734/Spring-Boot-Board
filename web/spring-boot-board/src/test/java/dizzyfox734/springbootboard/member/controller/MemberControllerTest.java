@@ -5,6 +5,7 @@ import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.mail.exception.MailMessageBuildException;
 import dizzyfox734.springbootboard.mail.exception.MailSendException;
+import dizzyfox734.springbootboard.mail.exception.TooManyMailRequestException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
 import dizzyfox734.springbootboard.member.domain.Member;
 import dizzyfox734.springbootboard.member.exception.DuplicateEmailException;
@@ -316,7 +317,7 @@ class MemberControllerTest {
         @WithAnonymousUser
         @DisplayName("이메일이 전달되면 인증 메일을 전송하고 201 Created를 반환한다")
         void returnCreated_whenSignupMailRequestIsValid() throws Exception {
-            doNothing().when(mailCertificationService).sendSignupVerificationCode("test@example.com");
+            doNothing().when(mailCertificationService).sendSignupVerificationCode(anyString(), anyString());
 
             mockMvc.perform(post("/member/signup/sendMail")
                             .with(csrf())
@@ -324,7 +325,7 @@ class MemberControllerTest {
                             .content(objectMapper.writeValueAsString(Map.of("email", "test@example.com"))))
                     .andExpect(status().isCreated());
 
-            then(mailCertificationService).should().sendSignupVerificationCode("test@example.com");
+            verify(mailCertificationService).sendSignupVerificationCode(eq("test@example.com"), anyString());
         }
 
         @Test
@@ -337,7 +338,7 @@ class MemberControllerTest {
                             .content(objectMapper.writeValueAsString(Map.of())))
                     .andExpect(status().isBadRequest());
 
-            then(mailCertificationService).should(never()).sendSignupVerificationCode(anyString());
+            then(mailCertificationService).should(never()).sendSignupVerificationCode(anyString(), anyString());
         }
 
         @Test
@@ -350,7 +351,7 @@ class MemberControllerTest {
                             .content(objectMapper.writeValueAsString(Map.of("email", ""))))
                     .andExpect(status().isBadRequest());
 
-            then(mailCertificationService).should(never()).sendSignupVerificationCode(anyString());
+            then(mailCertificationService).should(never()).sendSignupVerificationCode(anyString(), anyString());
         }
 
         @Test
@@ -359,13 +360,28 @@ class MemberControllerTest {
         void sendMail_exception() throws Exception {
             doThrow(new RuntimeException("fail"))
                     .when(mailCertificationService)
-                    .sendSignupVerificationCode(anyString());
+                    .sendSignupVerificationCode(anyString(), anyString());
 
             mockMvc.perform(post("/member/signup/sendMail")
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("email", "test@example.com"))))
                     .andExpect(status().isInternalServerError());
+        }
+
+        @Test
+        @WithAnonymousUser
+        @DisplayName("요청 제한 예외 발생 시 429 Too Many Requests를 반환한다")
+        void returnTooManyRequests_whenTooManyMailRequestExceptionOccurs() throws Exception {
+            doThrow(new TooManyMailRequestException())
+                    .when(mailCertificationService)
+                    .sendSignupVerificationCode(anyString(), anyString());
+
+            mockMvc.perform(post("/member/signup/sendMail")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("email", "test@example.com"))))
+                    .andExpect(status().isTooManyRequests());
         }
 
         @Test
@@ -501,7 +517,7 @@ class MemberControllerTest {
         @DisplayName("비밀번호 재설정 대상 회원이 존재하고 메일 발송에 성공하면 성공 파라미터와 함께 리다이렉트한다")
         void redirectToFindPwdWithSuccess_whenResetPasswordSucceeds() throws Exception {
             doNothing().when(memberService)
-                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString());
+                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString(), anyString());
 
             mockMvc.perform(post("/member/reset/pwd")
                             .with(csrf())
@@ -511,7 +527,7 @@ class MemberControllerTest {
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrl("/member/find/pwd?success=true"));
 
-            then(memberService).should().createPasswordResetTokenAndSendEmail("홍길동", "test@example.com", "testuser");
+            verify(memberService).createPasswordResetTokenAndSendEmail(eq("홍길동"), eq("test@example.com"), eq("testuser"), anyString());
         }
 
         @Test
@@ -520,7 +536,7 @@ class MemberControllerTest {
         void redirectToFindPwdWithError_whenResetTargetDoesNotExist() throws Exception {
             doThrow(new DataNotFoundException("해당 정보로 회원을 찾을 수 없습니다."))
                     .when(memberService)
-                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString());
+                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString(), anyString());
 
             mockMvc.perform(post("/member/reset/pwd")
                             .with(csrf())
@@ -530,7 +546,7 @@ class MemberControllerTest {
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
 
-            then(memberService).should().createPasswordResetTokenAndSendEmail("홍길동", "test@example.com", "testuser");
+            verify(memberService).createPasswordResetTokenAndSendEmail(eq("홍길동"), eq("test@example.com"), eq("testuser"), anyString());
         }
 
         @Test
@@ -539,7 +555,7 @@ class MemberControllerTest {
         void redirectToFindPwdWithError_whenMailSendExceptionOccurs() throws Exception {
             doThrow(new MailSendException("이메일 전송에 실패했습니다.", new RuntimeException("SMTP Error")))
                     .when(memberService)
-                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString());
+                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString(), anyString());
 
             mockMvc.perform(post("/member/reset/pwd")
                             .with(csrf())
@@ -549,7 +565,7 @@ class MemberControllerTest {
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
 
-            then(memberService).should().createPasswordResetTokenAndSendEmail("홍길동", "test@example.com", "testuser");
+            verify(memberService).createPasswordResetTokenAndSendEmail(eq("홍길동"), eq("test@example.com"), eq("testuser"), anyString());
         }
 
         @Test
@@ -558,7 +574,7 @@ class MemberControllerTest {
         void redirectToFindPwdWithError_whenMailMessageBuildExceptionOccurs() throws Exception {
             doThrow(new MailMessageBuildException("이메일 메시지 생성에 실패했습니다.", new RuntimeException("mime error")))
                     .when(memberService)
-                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString());
+                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString(), anyString());
 
             mockMvc.perform(post("/member/reset/pwd")
                             .with(csrf())
@@ -568,7 +584,26 @@ class MemberControllerTest {
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
 
-            then(memberService).should().createPasswordResetTokenAndSendEmail("홍길동", "test@example.com", "testuser");
+            verify(memberService).createPasswordResetTokenAndSendEmail(eq("홍길동"), eq("test@example.com"), eq("testuser"), anyString());
+        }
+
+        @Test
+        @WithAnonymousUser
+        @DisplayName("요청 제한 예외가 발생하면 에러 메시지와 함께 비밀번호 찾기 페이지로 리다이렉트한다")
+        void redirectToFindPwdWithError_whenTooManyMailRequestExceptionOccurs() throws Exception {
+            doThrow(new TooManyMailRequestException())
+                    .when(memberService)
+                    .createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString(), anyString());
+
+            mockMvc.perform(post("/member/reset/pwd")
+                            .with(csrf())
+                            .param("username", "testuser")
+                            .param("name", "홍길동")
+                            .param("email", "test@example.com"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrlPattern("/member/find/pwd?error=*"));
+
+            verify(memberService).createPasswordResetTokenAndSendEmail(eq("홍길동"), eq("test@example.com"), eq("testuser"), anyString());
         }
 
         @Test
@@ -581,7 +616,7 @@ class MemberControllerTest {
                     .andExpect(view().name("member/findPwd"))
                     .andExpect(model().hasErrors());
 
-            then(memberService).should(never()).createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString());
+            then(memberService).should(never()).createPasswordResetTokenAndSendEmail(anyString(), anyString(), anyString(), anyString());
         }
 
         @Test

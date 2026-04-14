@@ -6,6 +6,7 @@ import dizzyfox734.springbootboard.mail.domain.MailProperties;
 import dizzyfox734.springbootboard.mail.exception.ExpiredMailCertificationCodeException;
 import dizzyfox734.springbootboard.mail.exception.InvalidMailCertificationCodeException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
+import dizzyfox734.springbootboard.mail.service.MailRateLimitService;
 import dizzyfox734.springbootboard.mail.service.MailService;
 import dizzyfox734.springbootboard.member.domain.Authority;
 import dizzyfox734.springbootboard.member.domain.Member;
@@ -33,6 +34,7 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
     private final MailCertificationService mailCertificationService;
+    private final MailRateLimitService mailRateLimitService;
     private final AuthorityRepository authorityRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final MailProperties mailProperties;
@@ -108,8 +110,11 @@ public class MemberService {
     }
 
     @Transactional
-    public void createPasswordResetTokenAndSendEmail(String name, String email, String username) {
+    public void createPasswordResetTokenAndSendEmail(String name, String email, String username, String clientIp) {
+        mailRateLimitService.validatePasswordResetMailIpLimit(clientIp);
         Member member = findMemberForPasswordReset(name, email, username);
+        mailRateLimitService.validatePasswordResetMailCooldown(member.getEmail());
+        mailRateLimitService.markPasswordResetMailCooldown(member.getEmail());
         String previousToken = passwordResetTokenRepository.getTokenByUsername(member.getUsername());
         Duration previousExpiration = previousToken == null
                 ? null
@@ -117,11 +122,11 @@ public class MemberService {
         String resetToken = generatePasswordResetToken();
         Duration expiration = Duration.ofSeconds(mailProperties.getPasswordResetExpirationSeconds());
 
-        passwordResetTokenRepository.save(member.getUsername(), resetToken, expiration);
-
         try {
+            passwordResetTokenRepository.save(member.getUsername(), resetToken, expiration);
             mailService.sendPasswordResetEmail(member.getEmail(), resetToken);
         } catch (RuntimeException e) {
+            mailRateLimitService.clearPasswordResetMailCooldown(member.getEmail());
             restorePreviousPasswordResetToken(member.getUsername(), resetToken, previousToken, previousExpiration);
             throw e;
         }

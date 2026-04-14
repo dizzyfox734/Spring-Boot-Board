@@ -4,6 +4,7 @@ import dizzyfox734.springbootboard.global.exception.DataNotFoundException;
 import dizzyfox734.springbootboard.global.exception.InvalidRequestException;
 import dizzyfox734.springbootboard.mail.exception.MailMessageBuildException;
 import dizzyfox734.springbootboard.mail.exception.MailSendException;
+import dizzyfox734.springbootboard.mail.exception.TooManyMailRequestException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
 import dizzyfox734.springbootboard.member.controller.dto.*;
 import dizzyfox734.springbootboard.member.domain.Member;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.security.Principal;
 
@@ -110,10 +112,13 @@ public class MemberController {
      */
     @PreAuthorize("isAnonymous()")
     @PostMapping("/signup/sendMail")
-    public ResponseEntity<Void> sendSignUpMail(@Valid @RequestBody EmailRequest request) {
+    public ResponseEntity<Void> sendSignUpMail(@Valid @RequestBody EmailRequest request,
+                                               HttpServletRequest httpServletRequest) {
         try {
-            mailCertificationService.sendSignupVerificationCode(request.getEmail());
+            mailCertificationService.sendSignupVerificationCode(request.getEmail(), extractClientIp(httpServletRequest));
             return CREATED;
+        } catch (TooManyMailRequestException e) {
+            return ResponseEntity.status(429).build();
         } catch (RuntimeException e) {
             return ResponseEntity.internalServerError().build();
         }
@@ -169,7 +174,8 @@ public class MemberController {
     @PostMapping("/reset/pwd")
     public String resetPwd(@Valid FindPwdDto findPwdDto,
                            BindingResult bindingResult,
-                           RedirectAttributes redirectAttributes) {
+                           RedirectAttributes redirectAttributes,
+                           HttpServletRequest httpServletRequest) {
         if (bindingResult.hasErrors()) {
             return "member/findPwd";
         }
@@ -178,9 +184,10 @@ public class MemberController {
             memberService.createPasswordResetTokenAndSendEmail(
                     findPwdDto.getName(),
                     findPwdDto.getEmail(),
-                    findPwdDto.getUsername()
+                    findPwdDto.getUsername(),
+                    extractClientIp(httpServletRequest)
             );
-        } catch (DataNotFoundException | MailSendException | MailMessageBuildException e) {
+        } catch (DataNotFoundException | MailSendException | MailMessageBuildException | TooManyMailRequestException e) {
             redirectAttributes.addAttribute("error", e.getMessage());
             return "redirect:/member/find/pwd";
         }
@@ -234,6 +241,20 @@ public class MemberController {
     public String info(Model model, Principal principal, MemberModifyDto memberModifyDto) {
         model.addAttribute("username", principal.getName());
         return "member/info";
+    }
+
+    private String extractClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp;
+        }
+
+        return request.getRemoteAddr();
     }
 
     /**

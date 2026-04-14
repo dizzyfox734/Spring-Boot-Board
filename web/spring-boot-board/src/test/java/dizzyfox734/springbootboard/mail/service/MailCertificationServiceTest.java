@@ -3,6 +3,7 @@ package dizzyfox734.springbootboard.mail.service;
 import dizzyfox734.springbootboard.mail.domain.CertificationCodeGenerator;
 import dizzyfox734.springbootboard.mail.exception.ExpiredMailCertificationCodeException;
 import dizzyfox734.springbootboard.mail.exception.InvalidMailCertificationCodeException;
+import dizzyfox734.springbootboard.mail.exception.TooManyMailRequestException;
 import dizzyfox734.springbootboard.mail.repository.MailCertificationRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,25 +32,33 @@ public class MailCertificationServiceTest {
     @Mock
     private MailSenderService mailSenderService;
 
+    @Mock
+    private MailRateLimitService mailRateLimitService;
+
     @InjectMocks
     private MailCertificationService mailCertificationService;
 
     @Test
     @DisplayName("sendSignupVerificationCode(): 인증코드를 생성하고 저장한 뒤 메일을 발송한다")
-    public void shouldSendSignupVerificationCodeAndSaveCertificationCode_whenEmailIsValid() {
+    void shouldSendSignupVerificationCodeAndSaveCertificationCode_whenEmailIsValid() {
         // given
         String email = "test@example.com";
+        String clientIp = "127.0.0.1";
         String certificationCode = "A1B2C3D4";
         String content = "test content";
 
+        doNothing().when(mailRateLimitService)
+                .validateSignupMailRequest(email, clientIp);
         when(certificationCodeGenerator.generate()).thenReturn(certificationCode);
         when(mailContentBuilder.buildSignUpVerificationContent(certificationCode))
                 .thenReturn(content);
 
         // when
-        mailCertificationService.sendSignupVerificationCode(email);
+        mailCertificationService.sendSignupVerificationCode(email, clientIp);
 
         // then
+        verify(mailRateLimitService).validateSignupMailRequest(email, clientIp);
+        verify(mailRateLimitService).markSignupMailCooldown(email);
         verify(certificationCodeGenerator).generate();
         verify(mailContentBuilder).buildSignUpVerificationContent(certificationCode);
         verify(mailSenderService).send(email, "회원가입 인증코드입니다.", content);
@@ -57,10 +66,29 @@ public class MailCertificationServiceTest {
     }
 
     @Test
-    @DisplayName("sendSignupVerificationCode(): 기존 코드가 없고 메일 발송에 실패하면 저장한 인증코드를 제거한다")
-    public void shouldRemoveCertificationCode_whenMailSendFails() {
+    @DisplayName("sendSignupVerificationCode(): cooldown 존재 시 TooManyRequestException 발생")
+    void shouldThrowTooManyException_whenCooldownExists() {
         // given
         String email = "test@example.com";
+        String clientIp = "127.0.0.1";
+        doThrow(new TooManyMailRequestException())
+                .when(mailRateLimitService)
+                .validateSignupMailRequest(email, clientIp);
+
+        // when & then
+        assertThrows(TooManyMailRequestException.class,
+                () -> mailCertificationService.sendSignupVerificationCode(email, clientIp));
+
+        verify(mailRateLimitService).validateSignupMailRequest(email, clientIp);
+        verify(mailRateLimitService, never()).markSignupMailCooldown(anyString());
+    }
+
+    @Test
+    @DisplayName("sendSignupVerificationCode(): 기존 코드가 없고 메일 발송에 실패하면 저장한 인증코드를 제거한다")
+    void shouldRemoveCertificationCode_whenMailSendFails() {
+        // given
+        String email = "test@example.com";
+        String clientIp = "127.0.0.1";
         String certificationCode = "A1B2C3D4";
         String content = "test content";
 
@@ -74,18 +102,20 @@ public class MailCertificationServiceTest {
 
         // when & then
         assertThrows(RuntimeException.class,
-                () -> mailCertificationService.sendSignupVerificationCode(email)
+                () -> mailCertificationService.sendSignupVerificationCode(email, clientIp)
         );
 
+        verify(mailRateLimitService).clearSignupMailCooldown(email);
         verify(mailCertificationRepository).save(email, certificationCode);
         verify(mailCertificationRepository).remove(email);
     }
 
     @Test
     @DisplayName("sendSignupVerificationCode(): 재전송 메일 발송에 실패하면 기존 인증코드를 복구한다")
-    public void shouldRestorePreviousCertificationCode_whenResendMailFails() {
+    void shouldRestorePreviousCertificationCode_whenResendMailFails() {
         // given
         String email = "test@example.com";
+        String clientIp = "127.0.0.1";
         String previousCode = "OLD12345";
         String certificationCode = "A1B2C3D4";
         String content = "test content";
@@ -103,9 +133,10 @@ public class MailCertificationServiceTest {
 
         // when & then
         assertThrows(RuntimeException.class,
-                () -> mailCertificationService.sendSignupVerificationCode(email)
+                () -> mailCertificationService.sendSignupVerificationCode(email, clientIp)
         );
 
+        verify(mailRateLimitService).clearSignupMailCooldown(email);
         verify(mailCertificationRepository).save(email, certificationCode);
         verify(mailCertificationRepository).save(email, previousCode, previousExpiration);
         verify(mailCertificationRepository, never()).remove(email);
@@ -113,18 +144,20 @@ public class MailCertificationServiceTest {
 
     @Test
     @DisplayName("sendSignupVerificationCode(): 인증코드 생성에 실패하면 이후 작업을 수행하지 않는다")
-    public void shouldPropagateExceptionAndStop_whenCodeGenerationFails() {
+    void shouldPropagateExceptionAndStop_whenCodeGenerationFails() {
         // given
         String email = "test@example.com";
+        String clientIp = "127.0.0.1";
 
         when(certificationCodeGenerator.generate())
                 .thenThrow(new IllegalStateException("인증코드 생성 실패"));
 
         // when
         assertThrows(IllegalStateException.class,
-                () -> mailCertificationService.sendSignupVerificationCode(email));
+                () -> mailCertificationService.sendSignupVerificationCode(email, clientIp));
 
         // then
+        verify(mailRateLimitService).clearSignupMailCooldown(email);
         verify(mailContentBuilder, never()).buildSignUpVerificationContent(anyString());
         verify(mailSenderService, never()).send(anyString(), anyString(), anyString());
         verify(mailCertificationRepository, never()).save(anyString(), anyString());
@@ -132,9 +165,10 @@ public class MailCertificationServiceTest {
 
     @Test
     @DisplayName("sendSignupVerificationCode(): 메일 본문 생성에 실패하면 발송과 저장을 수행하지 않는다")
-    public void shouldPropagateExceptionAndStop_whenMailContentBuildFails() {
+    void shouldPropagateExceptionAndStop_whenMailContentBuildFails() {
         // given
         String email = "test@example.com";
+        String clientIp = "127.0.0.1";
         String certificationCode = "A1B2C3D4";
 
         when(certificationCodeGenerator.generate()).thenReturn(certificationCode);
@@ -143,9 +177,10 @@ public class MailCertificationServiceTest {
 
         // when
         assertThrows(RuntimeException.class,
-                () -> mailCertificationService.sendSignupVerificationCode(email));
+                () -> mailCertificationService.sendSignupVerificationCode(email, clientIp));
 
         // then
+        verify(mailRateLimitService).clearSignupMailCooldown(email);
         verify(certificationCodeGenerator, times(1)).generate();
         verify(mailContentBuilder, times(1)).buildSignUpVerificationContent(certificationCode);
         verify(mailSenderService, never()).send(anyString(), anyString(), anyString());
@@ -154,7 +189,7 @@ public class MailCertificationServiceTest {
 
     @Test
     @DisplayName("verifyEmailCertificationCode(): 저장된 인증코드와 일치하면 인증 처리 후 코드를 삭제한다")
-    public void shouldRemoveCertificationCode_whenVerificationCodeMatches() {
+    void shouldRemoveCertificationCode_whenVerificationCodeMatches() {
         // given
         String email = "test@example.com";
         String certificationCode = "A1B2C3D4";
@@ -172,7 +207,7 @@ public class MailCertificationServiceTest {
 
     @Test
     @DisplayName("verifyEmailCertificationCode(): 저장된 인증코드가 없으면 만료 예외를 던진다")
-    public void shouldThrowExpiredException_whenCertificationCodeDoesNotExist() {
+    void shouldThrowExpiredException_whenCertificationCodeDoesNotExist() {
         // given
         String email = "test@example.com";
         String certificationCode = "A1B2C3D4";
@@ -192,7 +227,7 @@ public class MailCertificationServiceTest {
 
     @Test
     @DisplayName("verifyEmailCertificationCode(): 저장된 인증코드와 다르면 불일치 예외를 던진다")
-    public void shouldThrowInvalidCodeException_whenCertificationCodeDoesNotMatch() {
+    void shouldThrowInvalidCodeException_whenCertificationCodeDoesNotMatch() {
         // given
         String email = "test@example.com";
         String certificationCode = "A1B2C3D4";
@@ -213,7 +248,7 @@ public class MailCertificationServiceTest {
 
     @Test
     @DisplayName("verifyEmailCertificationCode(): 인증 성공 후 삭제에 실패하면 예외를 전파한다")
-    public void shouldPropagateException_whenRemovingCertificationCodeFails() {
+    void shouldPropagateException_whenRemovingCertificationCodeFails() {
         // given
         String email = "test@example.com";
         String certificationCode = "A1B2C3D4";

@@ -8,6 +8,7 @@ import dizzyfox734.springbootboard.mail.exception.InvalidMailCertificationCodeEx
 import dizzyfox734.springbootboard.mail.exception.MailMessageBuildException;
 import dizzyfox734.springbootboard.mail.exception.MailSendException;
 import dizzyfox734.springbootboard.mail.service.MailCertificationService;
+import dizzyfox734.springbootboard.mail.service.MailRateLimitService;
 import dizzyfox734.springbootboard.mail.service.MailService;
 import dizzyfox734.springbootboard.member.domain.Authority;
 import dizzyfox734.springbootboard.member.domain.Member;
@@ -59,6 +60,9 @@ class MemberServiceTest {
 
     @Mock
     private MailProperties mailProperties;
+
+    @Mock
+    private MailRateLimitService mailRateLimitService;
 
     @InjectMocks
     private MemberService memberService;
@@ -487,6 +491,7 @@ class MemberServiceTest {
         String name = "홍길동";
         String email = "test@example.com";
         String username = "testuser";
+        String clientIp = "127.0.0.1";
 
         Member member = createMember(
                 username,
@@ -500,9 +505,12 @@ class MemberServiceTest {
         when(mailProperties.getPasswordResetExpirationSeconds()).thenReturn(1800L);
 
         // when
-        memberService.createPasswordResetTokenAndSendEmail(name, email, username);
+        memberService.createPasswordResetTokenAndSendEmail(name, email, username, clientIp);
 
         // then
+        verify(mailRateLimitService).validatePasswordResetMailIpLimit(clientIp);
+        verify(mailRateLimitService).validatePasswordResetMailCooldown(email);
+        verify(mailRateLimitService).markPasswordResetMailCooldown(email);
         verify(passwordResetTokenRepository).save(eq("testuser"), anyString(), any(Duration.class));
         verify(mailService).sendPasswordResetEmail(eq(email), anyString());
         verify(memberRepository, never()).save(any(Member.class));
@@ -515,6 +523,7 @@ class MemberServiceTest {
         String name = "홍길동";
         String email = "test@example.com";
         String username = "testuser";
+        String clientIp = "127.0.0.1";
 
         when(memberRepository.findByNameAndEmailAndUsername(name, email, username))
                 .thenReturn(Optional.empty());
@@ -522,11 +531,13 @@ class MemberServiceTest {
         // when
         DataNotFoundException exception = assertThrows(
                 DataNotFoundException.class,
-                () -> memberService.createPasswordResetTokenAndSendEmail(name, email, username)
+                () -> memberService.createPasswordResetTokenAndSendEmail(name, email, username, clientIp)
         );
 
         // then
         assertEquals("No user found with the provided name and email", exception.getMessage());
+        verify(mailRateLimitService).validatePasswordResetMailIpLimit(clientIp);
+        verify(mailRateLimitService, never()).validatePasswordResetMailCooldown(anyString());
         verify(passwordResetTokenRepository, never()).save(anyString(), anyString(), any());
         verify(memberRepository, never()).save(any(Member.class));
         verify(mailService, never()).sendPasswordResetEmail(eq(email), anyString());
@@ -539,6 +550,7 @@ class MemberServiceTest {
         String name = "홍길동";
         String email = "test@example.com";
         String username = "testuser";
+        String clientIp = "127.0.0.1";
 
         Member member = createMember(
                 username,
@@ -559,11 +571,12 @@ class MemberServiceTest {
         // when
         MailSendException exception = assertThrows(
                 MailSendException.class,
-                () -> memberService.createPasswordResetTokenAndSendEmail(name, email, username)
+                () -> memberService.createPasswordResetTokenAndSendEmail(name, email, username, clientIp)
         );
 
         // then
         assertEquals("이메일 전송에 실패했습니다.", exception.getMessage());
+        verify(mailRateLimitService).clearPasswordResetMailCooldown(email);
         verify(passwordResetTokenRepository, times(2)).save(eq("testuser"), anyString(), any(Duration.class));
         verify(passwordResetTokenRepository).save("testuser", "previous-token", Duration.ofSeconds(300));
         verify(mailService).sendPasswordResetEmail(eq(email), anyString());

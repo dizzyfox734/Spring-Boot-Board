@@ -15,12 +15,12 @@ public class MailProperties {
     private String senderName = "SBB";
 
     /**
-     * 인증코드 길이
+     * 회원가입 인증코드 길이
      */
     private int certificationCodeLength = 8;
 
     /**
-     * 인증코드 만료 시간(초)
+     * 회원가입 인증코드 만료 시간(초)
      */
     private long certificationExpirationSeconds = 600L;
 
@@ -33,4 +33,19 @@ public class MailProperties {
      * 비밀번호 재설정 링크 생성에 사용할 기본 URL
      */
     private String passwordResetBaseUrl = "http://localhost:8080";
+
+    /**
+     * 이메일 전송 쿨다운 시간(초)
+     */
+    private long cooldownSeconds = 60L;
+
+    /**
+     * IP 기준 이메일 요청 제한 시간(초)
+     */
+    private long ipLimitWindowSeconds = 600L;
+
+    /**
+     * IP 기준 이메일 요청 허용 횟수
+     */
+    private long ipLimitMaxRequests = 5L;
 }

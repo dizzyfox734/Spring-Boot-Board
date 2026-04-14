@@ -17,29 +17,37 @@ public class MailCertificationService {
     private final CertificationCodeGenerator certificationCodeGenerator;
     private final MailContentBuilder mailContentBuilder;
     private final MailSenderService mailSenderService;
+    private final MailRateLimitService mailRateLimitService;
 
     public MailCertificationService(MailCertificationRepository mailCertificationRepository,
                                     CertificationCodeGenerator certificationCodeGenerator,
                                     MailContentBuilder mailContentBuilder,
-                                    MailSenderService mailSenderService) {
+                                    MailSenderService mailSenderService,
+                                    MailRateLimitService mailRateLimitService) {
         this.mailCertificationRepository = mailCertificationRepository;
+        this.mailRateLimitService = mailRateLimitService;
         this.certificationCodeGenerator = certificationCodeGenerator;
         this.mailContentBuilder = mailContentBuilder;
         this.mailSenderService = mailSenderService;
     }
 
-    public void sendSignupVerificationCode(String email) {
+    public void sendSignupVerificationCode(String email, String clientIp) {
+        mailRateLimitService.validateSignupMailRequest(email, clientIp);
+        mailRateLimitService.markSignupMailCooldown(email);
+
         String previousCode = mailCertificationRepository.get(email);
         Duration previousExpiration = previousCode == null
                 ? null
                 : mailCertificationRepository.getExpiration(email);
-        String certificationCode = certificationCodeGenerator.generate();
-        String content = mailContentBuilder.buildSignUpVerificationContent(certificationCode);
 
-        mailCertificationRepository.save(email, certificationCode);
         try {
+            String certificationCode = certificationCodeGenerator.generate();
+            String content = mailContentBuilder.buildSignUpVerificationContent(certificationCode);
+
+            mailCertificationRepository.save(email, certificationCode);
             mailSenderService.send(email, SIGNUP_MAIL_SUBJECT, content);
         } catch (RuntimeException e) {
+            mailRateLimitService.clearSignupMailCooldown(email);
             restorePreviousCertificationCode(email, previousCode, previousExpiration);
             throw e;
         }
