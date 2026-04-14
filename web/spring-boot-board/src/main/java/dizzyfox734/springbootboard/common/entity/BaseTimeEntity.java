@@ -28,12 +28,4 @@ public abstract class BaseTimeEntity {
     @Getter(value = AccessLevel.PROTECTED)
     @Column(columnDefinition = "datetime null default null")
     private LocalDateTime deletedDate;
-
-    public LocalDateTime getCreatedDate() {
-        return createdDate;
-    }
-
-    public LocalDateTime getModifiedDate() {
-        return modifiedDate;
-    }
 }
