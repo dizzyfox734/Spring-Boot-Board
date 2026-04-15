@@ -53,8 +53,16 @@ Spring Boot 기반 게시판 웹 애플리케이션입니다. 게시글, 댓글,
 
 - 회원가입 이메일 인증코드 발송
 - Redis에 인증코드 저장 및 만료 시간 관리
+- 이메일 기준 cooldown과 IP 기준 요청 횟수 제한 적용
 - 인증코드 검증 성공 시 Redis 데이터 삭제
 - 메일 발송 실패 시 기존 인증코드 복구 처리
+
+### 비밀번호 재설정 메일
+
+- Redis 기반 재설정 토큰 발급 및 만료 시간 관리
+- 재설정 링크 메일 발송
+- 이메일 기준 cooldown과 IP 기준 요청 횟수 제한 적용
+- 메일 발송 실패 시 이전 토큰 복구 처리
 
 ## 아키텍처
 
@@ -69,7 +77,9 @@ Spring Boot Application
   |-- Spring Data JPA ---- H2(local) / MySQL(AWS RDS)
   |
   `-- Redis
-      `-- Email certification code with TTL
+      |-- Email certification code with TTL
+      |-- Password reset token with TTL
+      `-- Mail request rate limit
 ```
 
 ## 패키지 구조
@@ -119,6 +129,7 @@ web/spring-boot-board/src/main/java/dizzyfox734/springbootboard
 - `MailCertificationService`가 인증코드 생성, Redis 저장, SMTP 발송, 검증을 담당합니다.
 - 인증코드는 Redis에 TTL과 함께 저장되며, 만료되었거나 값이 일치하지 않으면 별도 예외를 발생시킵니다.
 - 재발송 중 메일 발송이 실패하면 새 인증코드 저장으로 인해 기존 인증 상태가 깨지지 않도록 이전 인증코드를 복구합니다.
+- `MailRateLimitService`로 회원가입 인증 메일과 비밀번호 재설정 메일에 이메일 cooldown과 IP 기준 요청 제한을 적용했습니다.
 
 ### 게시글 검색
 
@@ -136,7 +147,7 @@ web/spring-boot-board/src/main/java/dizzyfox734/springbootboard
 테스트는 계층별로 분리되어 있습니다.
 
 - Domain test: `PostTest`, `CommentTest`, `MemberTest`
-- Service test: `PostServiceTest`, `CommentServiceTest`, `MemberServiceTest`, `MailServiceTest`, `MailCertificationServiceTest`
+- Service test: `PostServiceTest`, `CommentServiceTest`, `MemberServiceTest`, `MailServiceTest`, `MailCertificationServiceTest`, `MailRateLimitServiceTest`
 - Controller test: `PostControllerTest`, `CommentControllerTest`, `MemberControllerTest`
 - Repository integration test: `PostRepositoryJpaIntegrationTest`, `CommentRepositoryJpaIntegrationTest`, `MemberRepositoryJpaIntegrationTest`
 - Exception handler test: `GlobalViewExceptionHandlerTest`
