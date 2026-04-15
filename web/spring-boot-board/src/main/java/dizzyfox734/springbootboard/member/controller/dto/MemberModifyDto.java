@@ -3,6 +3,7 @@ package dizzyfox734.springbootboard.member.controller.dto;
 import dizzyfox734.springbootboard.global.validation.PasswordMatchable;
 import dizzyfox734.springbootboard.global.validation.PasswordMatches;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,6 +13,10 @@ import lombok.Setter;
 public class MemberModifyDto implements PasswordMatchable {
 
     @NotEmpty(message = "비밀번호는 필수항목입니다.")
+    @Pattern(
+            regexp = MemberValidationConstants.PASSWORD_PATTERN,
+            message = MemberValidationConstants.PASSWORD_PATTERN_MESSAGE
+    )
     private String password1;
 
     @NotEmpty(message = "비밀번호 확인은 필수항목입니다.")

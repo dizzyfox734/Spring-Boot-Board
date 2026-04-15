@@ -433,7 +433,7 @@ class MemberServiceTest {
         );
 
         // then
-        assertEquals("user not found", exception.getMessage());
+        assertEquals("회원을 찾을 수 없습니다.", exception.getMessage());
         verify(memberRepository).findOneWithAuthoritiesByUsername(username);
     }
 
@@ -480,7 +480,7 @@ class MemberServiceTest {
         );
 
         // then
-        assertEquals("No user found with the provided name and email", exception.getMessage());
+        assertEquals("입력한 정보와 일치하는 회원을 찾을 수 없습니다.", exception.getMessage());
         verify(memberRepository).findByNameAndEmail(name, email);
     }
 
@@ -535,7 +535,7 @@ class MemberServiceTest {
         );
 
         // then
-        assertEquals("No user found with the provided name and email", exception.getMessage());
+        assertEquals("입력한 정보와 일치하는 회원을 찾을 수 없습니다.", exception.getMessage());
         verify(mailRateLimitService).validatePasswordResetMailIpLimit(clientIp);
         verify(mailRateLimitService, never()).validatePasswordResetMailCooldown(anyString());
         verify(passwordResetTokenRepository, never()).save(anyString(), anyString(), any());

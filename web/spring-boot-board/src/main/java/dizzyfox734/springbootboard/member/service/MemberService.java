@@ -27,6 +27,8 @@ import java.util.UUID;
 @Service
 public class MemberService {
 
+    private static final String MEMBER_NOT_FOUND_MESSAGE = "회원을 찾을 수 없습니다.";
+    private static final String MEMBER_NOT_FOUND_BY_INFO_MESSAGE = "입력한 정보와 일치하는 회원을 찾을 수 없습니다.";
     private static final String PASSWORD_RESET_TOKEN_INVALID_MESSAGE =
             "유효하지 않거나 만료된 비밀번호 재설정 링크입니다.";
 
@@ -91,7 +93,7 @@ public class MemberService {
     @Transactional(readOnly = true)
     public Member getMember(String username) {
         return memberRepository.findOneWithAuthoritiesByUsername(username)
-                .orElseThrow(() -> new DataNotFoundException("user not found"));
+                .orElseThrow(() -> new DataNotFoundException(MEMBER_NOT_FOUND_MESSAGE));
     }
 
     /**
@@ -106,7 +108,7 @@ public class MemberService {
     public String findUsername(String name, String email) {
         return memberRepository.findByNameAndEmail(name, email)
                 .map(Member::getUsername)
-                .orElseThrow(() -> new DataNotFoundException("No user found with the provided name and email"));
+                .orElseThrow(() -> new DataNotFoundException(MEMBER_NOT_FOUND_BY_INFO_MESSAGE));
     }
 
     @Transactional
@@ -171,7 +173,7 @@ public class MemberService {
 
     private Member findMemberForPasswordReset(String name, String email, String username) {
         return memberRepository.findByNameAndEmailAndUsername(name, email, username)
-                .orElseThrow(() -> new DataNotFoundException("No user found with the provided name and email"));
+                .orElseThrow(() -> new DataNotFoundException(MEMBER_NOT_FOUND_BY_INFO_MESSAGE));
     }
 
     private String generatePasswordResetToken() {

@@ -9,7 +9,7 @@
     <form th:action="@{/member/find/id}" th:object="${findIdDto}" method="post">
         <div th:if="${param.error}">
             <div class="alert alert-danger">
-                일치하는 ID를 찾지 못했습니다.
+                <span th:text="${param.error}"></span>
             </div>
         </div>
         <div class="mb-3">

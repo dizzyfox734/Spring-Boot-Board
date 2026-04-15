@@ -458,17 +458,17 @@ class MemberControllerTest {
 
         @Test
         @WithAnonymousUser
-        @DisplayName("회원 정보를 찾지 못하면 error=true와 함께 리다이렉트한다")
+        @DisplayName("회원 정보를 찾지 못하면 에러 메시지와 함께 리다이렉트한다")
         void redirectWithErrorParameter_whenMemberNotFound() throws Exception {
             given(memberService.findUsername(anyString(), anyString()))
-                    .willThrow(new DataNotFoundException("No user found with the provided name and email"));
+                    .willThrow(new DataNotFoundException("입력한 정보와 일치하는 회원을 찾을 수 없습니다."));
 
             mockMvc.perform(post("/member/find/id")
                             .with(csrf())
                             .param("name", "홍길동")
                             .param("email", "test@example.com"))
                     .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/member/find/id?error=true"));
+                    .andExpect(redirectedUrlPattern("/member/find/id?error=*"));
         }
 
         @Test

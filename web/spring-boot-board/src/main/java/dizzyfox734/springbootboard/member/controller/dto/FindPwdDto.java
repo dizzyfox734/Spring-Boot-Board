@@ -9,17 +9,21 @@ import lombok.Setter;
 @Getter
 @Setter
 public class FindPwdDto {
-    @Size(min = 3, max = 25)
+    @Size(min = 3, max = 25, message = MemberValidationConstants.USERNAME_SIZE_MESSAGE)
     @NotEmpty(message = "회원ID는 필수항목입니다.")
-    @Pattern(regexp = "[a-zA-Z0-9]{2,9}",
-            message = "아이디는 영문, 숫자만 가능하며 2 ~ 10자리까지 가능합니다.")
+    @Pattern(
+            regexp = MemberValidationConstants.USERNAME_PATTERN,
+            message = MemberValidationConstants.USERNAME_PATTERN_MESSAGE
+    )
     private String username;
 
     @NotEmpty(message = "이름은 필수항목입니다.")
     private String name;
 
     @NotEmpty(message = "이메일은 필수항목입니다.")
-    @Pattern(regexp = "^[0-9a-zA-Z]([-_\\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\\.]?[0-9a-zA-Z])*\\.[a-zA-Z]{2,3}",
-            message = "올바르지 않은 이메일 형식입니다.")
+    @Pattern(
+            regexp = MemberValidationConstants.EMAIL_PATTERN,
+            message = MemberValidationConstants.EMAIL_PATTERN_MESSAGE
+    )
     private String email;
 }

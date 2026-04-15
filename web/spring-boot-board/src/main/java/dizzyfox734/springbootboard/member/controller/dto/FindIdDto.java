@@ -12,7 +12,9 @@ public class FindIdDto {
     private String name;
 
     @NotEmpty(message = "이메일은 필수항목입니다.")
-    @Pattern(regexp = "^[0-9a-zA-Z]([-_\\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\\.]?[0-9a-zA-Z])*\\.[a-zA-Z]{2,3}",
-            message = "올바르지 않은 이메일 형식입니다.")
+    @Pattern(
+            regexp = MemberValidationConstants.EMAIL_PATTERN,
+            message = MemberValidationConstants.EMAIL_PATTERN_MESSAGE
+    )
     private String email;
 }

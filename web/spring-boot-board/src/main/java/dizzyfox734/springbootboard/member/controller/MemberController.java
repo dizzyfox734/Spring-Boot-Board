@@ -152,7 +152,7 @@ public class MemberController {
             redirectAttributes.addFlashAttribute("username", username);
             return "redirect:/member/find/id";
         } catch (DataNotFoundException e) {
-            redirectAttributes.addAttribute("error", true);
+            redirectAttributes.addAttribute("error", e.getMessage());
             return "redirect:/member/find/id";
         }
     }

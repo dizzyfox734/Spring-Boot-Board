@@ -17,8 +17,8 @@ public class PasswordResetDto implements PasswordMatchable {
 
     @NotEmpty(message = "비밀번호는 필수항목입니다.")
     @Pattern(
-            regexp = "^(?=.*\\d)(?=.*[a-zA-Z])[0-9a-zA-Z]{8,16}",
-            message = "비밀번호는 영문과 숫자 조합으로 8 ~ 16자리까지 가능합니다."
+            regexp = MemberValidationConstants.PASSWORD_PATTERN,
+            message = MemberValidationConstants.PASSWORD_PATTERN_MESSAGE
     )
     private String password1;
 

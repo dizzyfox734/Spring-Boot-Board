@@ -13,18 +13,18 @@ import lombok.Setter;
 @PasswordMatches
 public class SignupDto implements PasswordMatchable {
 
-    @Size(min = 3, max = 25)
+    @Size(min = 3, max = 25, message = MemberValidationConstants.USERNAME_SIZE_MESSAGE)
     @NotEmpty(message = "회원ID는 필수항목입니다.")
     @Pattern(
-            regexp = "[a-zA-Z0-9]{2,9}",
-            message = "아이디는 영문, 숫자만 가능하며 2 ~ 10자리까지 가능합니다."
+            regexp = MemberValidationConstants.USERNAME_PATTERN,
+            message = MemberValidationConstants.USERNAME_PATTERN_MESSAGE
     )
     private String username;
 
     @NotEmpty(message = "비밀번호는 필수항목입니다.")
     @Pattern(
-            regexp = "^(?=.*\\d)(?=.*[a-zA-Z])[0-9a-zA-Z]{8,16}",
-            message = "비밀번호는 영문과 숫자 조합으로 8 ~ 16자리까지 가능합니다."
+            regexp = MemberValidationConstants.PASSWORD_PATTERN,
+            message = MemberValidationConstants.PASSWORD_PATTERN_MESSAGE
     )
     private String password1;
 
@@ -36,8 +36,8 @@ public class SignupDto implements PasswordMatchable {
 
     @NotEmpty(message = "이메일은 필수항목입니다.")
     @Pattern(
-            regexp = "^[0-9a-zA-Z]([-_\\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\\.]?[0-9a-zA-Z])*\\.[a-zA-Z]{2,3}",
-            message = "올바르지 않은 이메일 형식입니다."
+            regexp = MemberValidationConstants.EMAIL_PATTERN,
+            message = MemberValidationConstants.EMAIL_PATTERN_MESSAGE
     )
     private String email;
 
