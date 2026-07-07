@@ -220,4 +220,4 @@ destroy container -> backup previous jar -> gradle build -> create container
 
 ## 작성자
 
-- GitHub: [dizzyfox734](https://github.com/dizzyfox734)
+- GitHub: [madebyjch](https://github.com/madebyjch)
